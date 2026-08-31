@@ -1,0 +1,90 @@
+version: '3.8'
+
+services:
+  vllm-inference:
+    image: vllm/vllm-openai:latest
+    container_name: sovereign-vllm
+    ports:
+      - '8000:8000'
+    volumes:
+      - model-cache:/root/.cache/huggingface
+      - ../../models:/models
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+    command: >
+      --model Qwen/Qwen2.5-VL-7B-Instruct
+      --trust-remote-code
+      --max-model-len 8192
+      --gpu-memory-utilization 0.85
+      --dtype auto
+      --api-key sovereign-local
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    restart: unless-stopped
+
+  yolo-service:
+    build:
+      context: .
+      dockerfile: Dockerfile.yolo
+    container_name: sovereign-yolo
+    ports:
+      - '8001:8001'
+    volumes:
+      - ../../models/yolo-pid:/models
+    environment:
+      - YOLO_MODEL_PATH=/models/best.pt
+    restart: unless-stopped
+
+  qdrant-db:
+    image: qdrant/qdrant:latest
+    container_name: sovereign-qdrant
+    ports:
+      - '6333:6333'
+      - '6334:6334'
+    volumes:
+      - qdrant-storage:/qdrant/storage
+    restart: unless-stopped
+
+  backend-api:
+    build:
+      context: ../..
+      dockerfile: infra/docker/Dockerfile.api
+    container_name: sovereign-api
+    ports:
+      - '8080:8080'
+    environment:
+      - VLLM_BASE_URL=http://vllm-inference:8000/v1
+      - QDRANT_URL=http://qdrant-db:6333
+      - YOLO_SERVICE_URL=http://yolo-service:8001
+      - AUDIT_DB_PATH=/data/audit_ledger.db
+      - CORS_ORIGIN=http://localhost:3000
+    volumes:
+      - audit-data:/data
+      - ../../models:/models:ro
+    depends_on:
+      - vllm-inference
+      - qdrant-db
+      - yolo-service
+    restart: unless-stopped
+
+  web-ui:
+    build:
+      context: ../../apps/web
+    container_name: sovereign-web
+    ports:
+      - '3000:3000'
+    environment:
+      - NEXT_PUBLIC_API_URL=http://backend-api:8080
+    depends_on:
+      - backend-api
+    restart: unless-stopped
+
+volumes:
+  model-cache:
+  qdrant-storage:
+  audit-data:

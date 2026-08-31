@@ -1,0 +1,22 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install dependencies
+RUN pip install --no-cache-dir ultralytics fastapi uvicorn pillow python-multipart
+
+# Copy the FastAPI app script
+COPY yolo_serve.py /app/yolo_serve.py
+
+# Expose 8001
+EXPOSE 8001
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8001/health')" || exit 1
+
+# Non-root user
+RUN useradd -m -u 1000 yolo-user
+USER yolo-user
+
+CMD ["python", "yolo_serve.py"]

@@ -1,0 +1,116 @@
+version: '3.8'
+
+networks:
+  sovereign-net:
+    driver: bridge
+    internal: true
+  frontend-net:
+    driver: bridge
+
+services:
+  vllm-inference:
+    image: sovereign-vllm:local
+    container_name: sovereign-vllm-airgap
+    networks:
+      - sovereign-net
+    volumes:
+      - model-store:/models:ro
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+    command: >
+      --model /models/Qwen2.5-VL-7B-Instruct
+      --trust-remote-code
+      --max-model-len 8192
+      --gpu-memory-utilization 0.85
+      --dtype auto
+      --api-key sovereign-local
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:size=2G
+    restart: unless-stopped
+
+  yolo-service:
+    image: sovereign-yolo:local
+    container_name: sovereign-yolo-airgap
+    networks:
+      - sovereign-net
+    volumes:
+      - model-store:/models:ro
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:size=512M
+    restart: unless-stopped
+
+  qdrant-db:
+    image: qdrant/qdrant:latest
+    container_name: sovereign-qdrant-airgap
+    networks:
+      - sovereign-net
+    volumes:
+      - qdrant-storage:/qdrant/storage
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+
+  backend-api:
+    image: sovereign-api:local
+    container_name: sovereign-api-airgap
+    networks:
+      - sovereign-net
+      - frontend-net
+    environment:
+      - VLLM_BASE_URL=http://vllm-inference:8000/v1
+      - QDRANT_URL=http://qdrant-db:6333
+      - YOLO_SERVICE_URL=http://yolo-service:8001
+      - AUDIT_DB_PATH=/data/audit_ledger.db
+      - CORS_ORIGIN=http://localhost:3000
+    volumes:
+      - audit-data:/data
+      - model-store:/models:ro
+    depends_on:
+      - vllm-inference
+      - qdrant-db
+      - yolo-service
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:size=256M
+    restart: unless-stopped
+
+  web-ui:
+    image: sovereign-web:local
+    container_name: sovereign-web-airgap
+    ports:
+      - '3000:3000'
+    networks:
+      - frontend-net
+    environment:
+      - NEXT_PUBLIC_API_URL=http://backend-api:8080
+    depends_on:
+      - backend-api
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:size=64M
+    restart: unless-stopped
+
+volumes:
+  model-store:
+    driver: local
+  qdrant-storage:
+    driver: local
+  audit-data:
+    driver: local

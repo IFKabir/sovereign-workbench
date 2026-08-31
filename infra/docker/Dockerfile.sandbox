@@ -1,0 +1,19 @@
+FROM python:3.11-slim
+
+# Install ONLY engineering packages
+RUN pip install --no-cache-dir numpy scipy pandas matplotlib
+
+# NO network tools, NO curl, NO wget
+RUN apt-get update && \
+    apt-get remove -y curl wget netcat-traditional net-tools iptables && \
+    apt-get autoremove -y && \
+    rm -rf /var/lib/apt/lists/*
+
+# Non-root user (sandbox-user, UID 65534)
+RUN useradd -m -u 65534 sandbox-user
+USER sandbox-user
+
+# Read-only considerations can be handled at runtime via docker/k8s (read_only: true, tmpfs)
+# or via specific volume mounts
+
+ENTRYPOINT ["python"]

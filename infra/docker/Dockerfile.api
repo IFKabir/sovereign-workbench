@@ -1,0 +1,32 @@
+# Stage 1: builder
+FROM python:3.11-slim AS builder
+WORKDIR /app
+# install uv
+RUN pip install uv
+# copy pyproject.toml and sync dependencies
+COPY pyproject.toml uv.lock* ./
+RUN uv venv /opt/venv && uv pip install -r pyproject.toml || uv pip install fastapi uvicorn pydantic qdrant-client
+
+# Stage 2: runtime
+FROM python:3.11-slim
+WORKDIR /app
+# copy installed packages
+COPY --from=builder /opt/venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+# copy app code
+COPY apps/api/ ./apps/api/
+COPY core/ ./core/
+
+# Expose 8080
+EXPOSE 8080
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
+  CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')" || exit 1
+
+# Non-root user
+RUN useradd -m -u 1000 api-user
+USER api-user
+
+CMD ["uvicorn", "apps.api.main:app", "--host", "0.0.0.0", "--port", "8080"]
