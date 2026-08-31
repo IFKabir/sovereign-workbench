@@ -1,0 +1,20 @@
+[project]
+name = "sovereign-api"
+version = "0.1.0"
+description = "FastAPI backend for Sovereign AI Workbench"
+requires-python = ">=3.11"
+dependencies = [
+    "agent-core",
+    "shared-schemas",
+    "security-audit",
+    "fastapi",
+    "uvicorn[standard]",
+    "python-multipart",
+    "aiofiles",
+    "httpx",
+    "pydantic-settings",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.backends"
