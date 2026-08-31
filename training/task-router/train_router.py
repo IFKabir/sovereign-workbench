@@ -91,18 +91,17 @@ def train_and_export():
     # Training arguments
     training_args = TrainingArguments(
         output_dir=os.path.join(base_dir, "checkpoints"),
-        evaluation_strategy="epoch",
+        eval_strategy="epoch",
         save_strategy="epoch",
         learning_rate=2e-5,
         per_device_train_batch_size=32,
         per_device_eval_batch_size=32,
         num_train_epochs=4,
         weight_decay=0.01,
-        warmup_ratio=0.1,
+        warmup_steps=50,
         load_best_model_at_end=True,
         metric_for_best_model="f1",
         fp16=torch.cuda.is_available(),
-        logging_dir=os.path.join(base_dir, "logs"),
         logging_steps=10
     )
     
@@ -112,7 +111,7 @@ def train_and_export():
         args=training_args,
         train_dataset=tokenized_datasets["train"],
         eval_dataset=tokenized_datasets["validation"],
-        tokenizer=tokenizer,
+        processing_class=tokenizer,
         compute_metrics=compute_metrics,
     )
     

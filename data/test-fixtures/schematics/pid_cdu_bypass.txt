@@ -1,0 +1,25 @@
+P&ID Description: CDU-2 Control Valve CV-101 Bypass Arrangement
+Tag Convention: ISA-5.1
+System: Crude Distillation Unit (CDU) preheat train
+
+Main Line: 8"-P-1001-A1A
+Flow passes through upstream manual gate valve (HV-101A).
+Flow enters control valve (CV-101).
+Flow exits CV-101 and passes through downstream manual gate valve (HV-101B).
+
+Instruments on Main Line:
+- Upstream of HV-101A: Pressure Transmitter PT-101.
+- Downstream of HV-101B: Temperature Sensor/Transmitter TT-102.
+
+Bypass Line: 6"-P-1002-A1A
+Bypass originates upstream of HV-101A.
+Flow passes through globe valve (HV-101C) used for manual throttling.
+Bypass ties back into the main line downstream of HV-101B.
+
+Isolation Arrangement (Double Block and Bleed):
+- Main line has HV-101A (Block 1) and HV-101B (Block 2).
+- A 3/4" bleed valve (V-101-BL) is installed between HV-101A and CV-101.
+- A 3/4" bleed valve (V-102-BL) is installed between CV-101 and HV-101B.
+
+COMPLIANCE VIOLATION NOTE:
+The bypass line (6"-P-1002-A1A) uses a single block valve (HV-101C) without any DBB arrangement. More importantly, the bypass line is missing a bleed valve entirely, which violates standard positive isolation practices when maintenance on the bypass valve itself is required while the main line is live.

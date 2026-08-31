@@ -1,0 +1,72 @@
+[
+    {
+        "query_text": "What is the minimum safe separation distance between a process unit and a control room according to OISD 118?",
+        "expected_intent": "RAG_STANDARDS",
+        "expected_contains": ["60m", "OISD", "118"],
+        "risk_level": "LOW",
+        "requires_hitl": false
+    },
+    {
+        "query_text": "What type of permit is required for excavation work deeper than 0.3m, and what color is it?",
+        "expected_intent": "RAG_STANDARDS",
+        "expected_contains": ["Excavation", "Green", "0.3m"],
+        "risk_level": "LOW",
+        "requires_hitl": false
+    },
+    {
+        "query_text": "How do you calculate relief valve area for liquid service according to API 520?",
+        "expected_intent": "RAG_STANDARDS",
+        "expected_contains": ["Bernoulli", "Area", "sqrt", "density"],
+        "risk_level": "LOW",
+        "requires_hitl": false
+    },
+    {
+        "query_text": "Review the P&ID for the CDU-2 control valve CV-101 bypass. Are there any compliance issues?",
+        "expected_intent": "VISION_SCHEMATIC",
+        "expected_contains": ["compliance", "violation", "bleed valve", "bypass", "HV-101C"],
+        "risk_level": "MEDIUM",
+        "requires_hitl": true
+    },
+    {
+        "query_text": "In the P-201A/B pump manifold, where is the minimum flow recirculation line routed?",
+        "expected_intent": "VISION_SCHEMATIC",
+        "expected_contains": ["suction vessel", "downstream of check valve", "upstream of discharge isolation"],
+        "risk_level": "LOW",
+        "requires_hitl": false
+    },
+    {
+        "query_text": "Identify all manual isolation valves on the discharge side of P-201A/B.",
+        "expected_intent": "VISION_SCHEMATIC",
+        "expected_contains": ["HV-202A", "HV-202B"],
+        "risk_level": "LOW",
+        "requires_hitl": false
+    },
+    {
+        "query_text": "Write a script to analyze the shift handover logs and extract all 'RUNNING' equipment.",
+        "expected_intent": "CODE_SANDBOX",
+        "expected_contains": ["script", "python", "RUNNING", "extract"],
+        "risk_level": "LOW",
+        "requires_hitl": false
+    },
+    {
+        "query_text": "Create a visualization dashboard comparing the crude feed rate and heater COT from the last 7 shift reports.",
+        "expected_intent": "CODE_SANDBOX",
+        "expected_contains": ["plot", "matplotlib", "dashboard", "visualize"],
+        "risk_level": "LOW",
+        "requires_hitl": false
+    },
+    {
+        "query_text": "Based on the shift handover report from Aug 30, what urgent issue needs attention on the bottoms pump?",
+        "expected_intent": "DOC_REASONING",
+        "expected_contains": ["abnormal vibration", "P-201A", "mechanical assessment"],
+        "risk_level": "MEDIUM",
+        "requires_hitl": true
+    },
+    {
+        "query_text": "Looking at the shift handover for CDU-2, cross-reference the outstanding work orders with the current equipment status. Which equipment is currently under maintenance?",
+        "expected_intent": "DOC_REASONING",
+        "expected_contains": ["P-105B", "Reflux Pump B", "mechanical seal"],
+        "risk_level": "LOW",
+        "requires_hitl": false
+    }
+]

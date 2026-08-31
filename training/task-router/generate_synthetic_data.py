@@ -117,6 +117,7 @@ def generate_synthetic_data() -> List[Dict[str, str]]:
         "reaction": ["hydrodesulfurization", "catalytic cracking", "isomerization", "reforming", "alkylation"],
         "fluid": ["naphtha", "gas oil", "residue", "LPG", "kerosene"],
         "exchanger": ["preheat train", "overhead condenser", "bottoms cooler", "feed/effluent exchanger"],
+        "reactor": ["fixed-bed reactor", "fluidized-bed reactor", "tubular reactor", "CSTR", "plug-flow reactor"],
         "gas": ["hydrogen", "methane", "ethane", "propane", "butane"],
         "pipe": ["carbon steel", "stainless steel", "alloy", "galvanized", "PVC"],
         "pump": ["centrifugal pump", "positive displacement pump", "rotary pump", "gear pump"],

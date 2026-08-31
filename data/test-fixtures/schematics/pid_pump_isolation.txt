@@ -1,0 +1,24 @@
+P&ID Description: P-201A/B Centrifugal Pump Isolation Manifold
+Tag Convention: ISA-5.1
+System: CDU-2 Bottoms Transfer
+
+Equipment: P-201A (Main Pump) and P-201B (Standby Pump), Centrifugal type.
+
+Suction Line:
+- 10" header splitting to two 8" lines.
+- Suction isolation valve: Gate valve, HV-201A (for P-201A) and HV-201B (for P-201B).
+- Y-Strainer (STR-201A/B) installed between suction isolation valve and pump suction nozzle.
+- Pressure Gauge (PG-201A/B) located between strainer and pump suction.
+
+Discharge Line:
+- Exiting pump discharge nozzle, 6" line.
+- Pressure Gauge (PG-202A/B) on discharge nozzle.
+- Check Valve (CKV-201A/B) to prevent reverse flow.
+- Discharge isolation valve: Gate valve, HV-202A/B, located downstream of check valve.
+- Lines merge into a 8" common discharge header.
+- Flow Transmitter (FT-201) on the common header.
+
+Minimum Flow Recirculation Line:
+- 2" line branching off downstream of check valve (CKV-201A/B) but upstream of discharge isolation (HV-202A/B).
+- Routes back to suction vessel.
+- Equipped with a flow restriction orifice (FO-201A/B) and a globe valve (HV-203A/B) for manual minimum flow control.
