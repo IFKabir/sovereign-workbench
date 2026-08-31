@@ -1,0 +1,10 @@
+[project]
+name = "shared-schemas"
+version = "0.1.0"
+description = "Shared Pydantic models and RBAC definitions for Sovereign Workbench"
+requires-python = ">=3.11"
+dependencies = ["pydantic>=2.0"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.backends"
