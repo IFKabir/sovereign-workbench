@@ -1,0 +1,57 @@
+# QLoRA fine-tuning configuration for Qwen2.5-VL-7B-Instruct
+# Designed for refinery domain visual-language tasks
+# Framework: transformers + peft + trl
+
+model_name_or_path: "Qwen/Qwen2.5-VL-7B-Instruct"
+dataset_name: "local_refinery_instruction_data.json" # instruction-response pairs for refinery domain
+
+# QLoRA parameters
+quantization:
+  load_in_4bit: true
+  bnb_4bit_quant_type: "nf4"
+  bnb_4bit_compute_dtype: "float16" # use bfloat16 if A100/H100
+  bnb_4bit_use_double_quant: true
+
+lora:
+  r: 64 # Rank for the low-rank adaptation
+  lora_alpha: 128 # Scaling factor
+  lora_dropout: 0.05 # Dropout probability for LoRA layers
+  target_modules: 
+    - "q_proj"
+    - "k_proj"
+    - "v_proj"
+    - "o_proj"
+    - "gate_proj"
+    - "up_proj"
+    - "down_proj"
+  task_type: "CAUSAL_LM"
+
+# Training parameters
+training:
+  output_dir: "../../models/vlm-finetuned/qwen2.5-vl-refinery"
+  num_train_epochs: 3 # Number of passes over the dataset
+  per_device_train_batch_size: 4 # Batch size per GPU
+  gradient_accumulation_steps: 4 # Number of updates steps to accumulate before performing a backward/update pass
+  learning_rate: 1e-4 # Initial learning rate
+  weight_decay: 0.01 # Weight decay to apply (if not zero) to all layers except all bias and LayerNorm weights
+  optim: "paged_adamw_32bit"
+  lr_scheduler_type: "cosine"
+  warmup_ratio: 0.03
+  fp16: true
+  max_grad_norm: 0.3
+  gradient_checkpointing: true # Save memory by recomputing activations
+
+# Evaluation and Save strategy
+evaluation:
+  eval_strategy: "steps"
+  eval_steps: 100 # Evaluate every 100 steps
+  per_device_eval_batch_size: 4
+
+save:
+  save_strategy: "steps"
+  save_steps: 200 # Save checkpoint every 200 steps
+  save_total_limit: 3 # Only keep the last 3 checkpoints
+
+logging:
+  logging_steps: 10
+  report_to: "tensorboard"
