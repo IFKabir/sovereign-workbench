@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+dist/
+*.egg-info/
+
+# Node
+node_modules/
+.next/
+out/
+
+# Model weights
+*.onnx
+*.pt
+*.safetensors
+*.bin
+models/
+data/
+
+# Environment
+.env
+*.db
+*.sqlite
+
+# Build
+build/
+.turbo/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db

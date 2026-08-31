@@ -1,0 +1,41 @@
+[project]
+name = "sovereign-workbench"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi",
+    "uvicorn[standard]",
+    "langgraph>=0.2.0",
+    "langchain-core",
+    "langchain-community",
+    "qdrant-client",
+    "pydantic>=2.0",
+    "pydantic-settings",
+    "torch",
+    "transformers",
+    "datasets",
+    "ultralytics",
+    "pymupdf",
+    "docker",
+    "cryptography",
+    "python-jose[cryptography]",
+    "pillow",
+    "httpx",
+    "aiofiles",
+    "python-multipart"
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-asyncio",
+    "ruff",
+    "mypy"
+]
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+
+[tool.uv.workspace]
+members = ["packages/*", "apps/api"]
