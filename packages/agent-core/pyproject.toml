@@ -1,0 +1,23 @@
+[project]
+name = "agent-core"
+version = "0.1.0"
+description = "LangGraph-based agentic AI orchestration for sovereign workbench"
+requires-python = ">=3.11"
+dependencies = [
+    "shared-schemas",
+    "security-audit",
+    "langgraph>=0.2.0",
+    "langchain-core",
+    "langchain-community",
+    "httpx",
+    "qdrant-client",
+    "docker",
+    "transformers",
+    "torch",
+    "pillow",
+    "pymupdf",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.backends"
