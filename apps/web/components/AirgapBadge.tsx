@@ -6,11 +6,13 @@ import clsx from 'clsx';
 
 export default function AirgapBadge() {
   const [isVerified, setIsVerified] = useState(true);
-  const [lastVerified, setLastVerified] = useState<Date>(new Date());
+  const [lastVerifiedText, setLastVerifiedText] = useState<string>('');
 
   useEffect(() => {
+    // Format timestamp on client mount to avoid SSR hydration mismatch
+    setLastVerifiedText(new Date().toLocaleTimeString());
     const interval = setInterval(() => {
-      setLastVerified(new Date());
+      setLastVerifiedText(new Date().toLocaleTimeString());
     }, 10000);
     return () => clearInterval(interval);
   }, []);
@@ -23,7 +25,7 @@ export default function AirgapBadge() {
           ? 'bg-accent-emerald/10 border-accent-emerald/30 text-accent-emerald shadow-[0_0_10px_rgba(16,185,129,0.2)]'
           : 'bg-danger/10 border-danger/30 text-danger animate-pulse shadow-[0_0_10px_rgba(239,68,68,0.2)]'
       )}
-      title={`Last verified: ${lastVerified.toLocaleTimeString()}`}
+      title={lastVerifiedText ? `Last verified: ${lastVerifiedText}` : 'Air-gap active'}
     >
       {isVerified ? (
         <ShieldCheck className="w-4 h-4" />
