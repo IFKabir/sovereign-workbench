@@ -1,6 +1,6 @@
 'use client';
 import { FileCode2, Search, CheckCircle, ShieldAlert, ChevronDown, ChevronRight } from 'lucide-react';
-import { useState } from 'react';
+import { useState, Fragment } from 'react';
 
 const mockLogs = [
   { id: 'BLK-0092', time: '2026-08-31 23:40:12', user: 'Op-A', role: 'L1_OPERATOR', action: 'INIT_QUERY', status: 'SUCCESS', hash: '0x8f4...e2a' },
@@ -57,7 +57,7 @@ export default function AuditPage() {
             </thead>
             <tbody>
               {mockLogs.map((log) => (
-                <React.Fragment key={log.id}>
+                <Fragment key={log.id}>
                   <tr 
                     onClick={() => setExpanded(expanded === log.id ? null : log.id)}
                     className={`border-b border-sovereign-border/50 transition-colors cursor-pointer ${expanded === log.id ? 'bg-sovereign-surface/60' : 'hover:bg-sovereign-surface/30'}`}
@@ -108,7 +108,7 @@ export default function AuditPage() {
                       </td>
                     </tr>
                   )}
-                </React.Fragment>
+                </Fragment>
               ))}
             </tbody>
           </table>
