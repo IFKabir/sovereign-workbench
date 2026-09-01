@@ -44,6 +44,7 @@ IMPORTANT RULES:
        sys.exit(1)
 6. Define ALL intermediate variables explicitly. Never leave undefined names.
 7. Match the formula to the problem type. Do NOT use pipe-friction formulas for PRV sizing.
+8. Use ONLY ASCII variable names (e.g. use `rho` instead of `ρ`, `delta_p` instead of `ΔP`, `epsilon` instead of `ε`, `mu` instead of `μ`). Do NOT use Greek or unicode characters as variable or parameter names in Python code.
 
 STANDARD EQUATIONS & DEFAULTS:
 
@@ -353,6 +354,18 @@ print("for automatic code generation.")
     # Step 3: Execute in sandbox
     sandbox = SecureSandbox()
     result = await sandbox.execute(code)
+
+    # If LLM-generated code failed execution (runtime error/NameError/ZeroDivisionError),
+    # fall back to the deterministic engineering calculator script.
+    if result.get("exit_code") != 0 and not state.get("metadata", {}).get("python_code"):
+        query_lower = query.lower()
+        if any(kw in query_lower for kw in ["darcy", "pressure drop", "friction", "pipe", "flow"]):
+            logger.warning(
+                f"LLM generated script execution failed (exit code {result.get('exit_code')}), "
+                f"retrying with deterministic Darcy-Weisbach fallback script."
+            )
+            code = _generate_darcy_weisbach_fallback(query)
+            result = await sandbox.execute(code)
 
     stdout = result.get("stdout", "")
     stderr = result.get("stderr", "")
