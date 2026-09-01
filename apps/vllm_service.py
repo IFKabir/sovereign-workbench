@@ -11,12 +11,17 @@ logger = logging.getLogger("vllm_service")
 
 app = FastAPI(title="Local LLM Inference Engine")
 
-MODEL_ID = "Qwen/Qwen2.5-0.5B-Instruct"
-logger.info(f"Loading LLM weights from {MODEL_ID} on GPU...")
+# Model Scaling: Qwen2.5-0.5B-Instruct (Default Fast Mode) / Qwen2.5-VL-7B-Instruct (Multimodal Mode)
+MODEL_ID = os.getenv("VLLM_MODEL_NAME", "Qwen/Qwen2.5-0.5B-Instruct")
+logger.info(f"Loading LLM weights from '{MODEL_ID}' on GPU/CPU...")
 
 tokenizer = AutoTokenizer.from_pretrained(MODEL_ID)
-model = AutoModelForCausalLM.from_pretrained(MODEL_ID, torch_dtype=torch.float16, device_map="auto")
-logger.info("LLM engine loaded successfully!")
+model = AutoModelForCausalLM.from_pretrained(
+    MODEL_ID,
+    torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32,
+    device_map="auto" if torch.cuda.is_available() else None
+)
+logger.info(f"LLM engine '{MODEL_ID}' loaded successfully!")
 
 @app.get("/v1/models")
 async def list_models():
@@ -24,7 +29,7 @@ async def list_models():
         "object": "list",
         "data": [
             {
-                "id": "Qwen/Qwen2.5-VL-7B-Instruct",
+                "id": MODEL_ID,
                 "object": "model",
                 "created": int(time.time()),
                 "owned_by": "sovereign-workbench"
@@ -43,7 +48,8 @@ async def chat_completions(request: Request):
         return JSONResponse(status_code=400, content={"error": "No messages provided"})
 
     formatted_text = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
-    inputs = tokenizer([formatted_text], return_tensors="pt").to(model.device)
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    inputs = tokenizer([formatted_text], return_tensors="pt").to(device)
     
     with torch.no_grad():
         outputs = model.generate(
@@ -65,7 +71,7 @@ async def chat_completions(request: Request):
         "id": f"chatcmpl-{int(time.time())}",
         "object": "chat.completion",
         "created": int(time.time()),
-        "model": "Qwen/Qwen2.5-VL-7B-Instruct",
+        "model": MODEL_ID,
         "choices": [
             {
                 "index": 0,
