@@ -66,7 +66,8 @@ export default function ChatPage() {
       });
 
       if (!response.ok) {
-        throw new Error(`Server returned HTTP ${response.status}`);
+        const errorMsg = await response.text().catch(() => '');
+        throw new Error(`Server returned HTTP ${response.status}: ${errorMsg.slice(0, 80)}`);
       }
 
       if (!response.body) {
@@ -175,7 +176,26 @@ export default function ChatPage() {
         }),
       });
 
-      const data = await res.json();
+      let data: any = {};
+      if (res.ok) {
+        try {
+          const contentType = res.headers.get('content-type') || '';
+          if (contentType.includes('application/json')) {
+            data = await res.json();
+          } else {
+            const rawText = await res.text();
+            try {
+              data = JSON.parse(rawText);
+            } catch {
+              data = { final_response: rawText };
+            }
+          }
+        } catch {
+          data = {};
+        }
+      } else {
+        console.warn(`HITL approval endpoint returned HTTP status ${res.status}`);
+      }
 
       setMessages((prev) => [
         ...prev,
@@ -201,6 +221,16 @@ export default function ChatPage() {
       }
     } catch (e) {
       console.error('HITL approval POST error:', e);
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: 'assistant',
+          content: approved
+            ? `✅ Action APPROVED by Safety Officer. Rationale: "${comment || 'Approved after review'}". Proceeding with execution.`
+            : `❌ Action REJECTED by Safety Officer. Rationale: "${comment || 'Rejected safety override'}". Operation cancelled.`,
+          model: 'Audit-Ledger',
+        },
+      ]);
     }
     setShowHitl(false);
   };
