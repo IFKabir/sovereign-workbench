@@ -3,10 +3,10 @@ import { FileCode2, Search, CheckCircle, ShieldAlert, ChevronDown, ChevronRight 
 import { useState, Fragment } from 'react';
 
 const mockLogs = [
-  { id: 'BLK-0092', time: '2026-08-31 23:40:12', user: 'Op-A', role: 'L1_OPERATOR', action: 'INIT_QUERY', status: 'SUCCESS', hash: '0x8f4...e2a' },
-  { id: 'BLK-0093', time: '2026-08-31 23:41:05', user: 'Agent-PID', role: 'SYSTEM', action: 'EXTRACT_ENTITIES', status: 'SUCCESS', hash: '0x1a9...c7b' },
-  { id: 'BLK-0094', time: '2026-08-31 23:42:30', user: 'Agent-Compl', role: 'SYSTEM', action: 'EVALUATE_RULES', status: 'WARNING', hash: '0x4f2...99d' },
-  { id: 'BLK-0095', time: '2026-08-31 23:45:01', user: 'Sup-B', role: 'L3_SUPERVISOR', action: 'HITL_APPROVE', status: 'SUCCESS', hash: '0x99e...11f' },
+  { id: 'BLK-0092', time: '2026-08-31 23:40:12', user: 'Operator-01', role: 'OPERATOR', action: 'INIT_QUERY', status: 'SUCCESS', hash: '0x8f4...e2a' },
+  { id: 'BLK-0093', time: '2026-08-31 23:41:05', user: 'Eng-02', role: 'PROCESS_ENGINEER', action: 'EXTRACT_ENTITIES', status: 'SUCCESS', hash: '0x1a9...c7b' },
+  { id: 'BLK-0094', time: '2026-08-31 23:42:30', user: 'Safety-01', role: 'SAFETY_OFFICER', action: 'EVALUATE_RULES', status: 'WARNING', hash: '0x4f2...99d' },
+  { id: 'BLK-0095', time: '2026-08-31 23:45:01', user: 'Director-01', role: 'PLANT_DIRECTOR', action: 'HITL_APPROVE', status: 'SUCCESS', hash: '0x99e...11f' },
 ];
 
 export default function AuditPage() {
@@ -35,9 +35,10 @@ export default function AuditPage() {
           </div>
           <select className="bg-sovereign-dark border border-sovereign-border text-gray-300 text-sm font-mono rounded-xl px-4 py-2.5 outline-none focus:border-accent-cyan cursor-pointer shadow-inner">
             <option>All Roles</option>
-            <option>SYSTEM</option>
-            <option>L1_OPERATOR</option>
-            <option>L3_SUPERVISOR</option>
+            <option>OPERATOR</option>
+            <option>SAFETY_OFFICER</option>
+            <option>PROCESS_ENGINEER</option>
+            <option>PLANT_DIRECTOR</option>
           </select>
         </div>
 

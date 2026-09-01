@@ -36,7 +36,7 @@ export default function DashboardPage() {
       >
         {[
           { label: 'Total Queries', value: '14,203', icon: Activity, color: 'text-accent-cyan' },
-          { label: 'Active Models', value: 'vLLM / YOLO', icon: Server, color: 'text-accent-emerald' },
+          { label: 'Active Models', value: 'Qwen2.5-VL / YOLOv11s', icon: Server, color: 'text-accent-emerald' },
           { label: 'Avg Chain Length', value: '4.2 Nodes', icon: Database, color: 'text-accent-amber' },
           { label: 'Uptime (Air-Gapped)', value: '99.99%', icon: Clock, color: 'text-gray-300' },
         ].map((stat, i) => (
@@ -57,10 +57,10 @@ export default function DashboardPage() {
           <h2 className="text-xl font-bold mb-4 flex items-center text-gray-200"><Server className="mr-3 w-5 h-5 text-accent-cyan"/> System Status</h2>
           <div className="space-y-4">
             {[
-              { name: 'vLLM Service (Llama-3-70B)', status: 'Healthy', load: '45%' },
-              { name: 'YOLOv10 P&ID Detector', status: 'Healthy', load: '12%' },
-              { name: 'Qdrant Vector DB', status: 'Healthy', load: '8%' },
-              { name: 'BGE-M3 Embeddings', status: 'Healthy', load: '22%' },
+              { name: 'vLLM Service (Qwen2.5-VL-7B-Instruct)', status: 'Healthy', load: '45%' },
+              { name: 'YOLOv11s P&ID Detector', status: 'Healthy', load: '12% (<20ms)' },
+              { name: 'Qdrant Vector DB (mrpl_standards)', status: 'Healthy', load: '107 Chunks' },
+              { name: 'BGE-M3 Embeddings Engine', status: 'Healthy', load: '22%' },
             ].map((service, i) => (
               <div key={i} className="flex items-center justify-between p-4 bg-sovereign-surface/50 rounded-lg border border-sovereign-border">
                 <span className="font-mono text-sm text-gray-300">{service.name}</span>
