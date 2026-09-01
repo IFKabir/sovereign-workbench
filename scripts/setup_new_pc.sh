@@ -37,17 +37,18 @@ if [ ! -d "$REPO_ROOT/.venv" ]; then
 fi
 
 source "$REPO_ROOT/.venv/bin/activate"
-pip install --upgrade pip --quiet
+pip install --upgrade pip hatchling editables setuptools wheel python-jose pyjwt --quiet
 
 # Install core Python packages
 echo -e "${GREEN}Installing Python packages...${NC}"
 pip install torch transformers ultralytics qdrant-client sentence-transformers fastapi uvicorn onnxruntime pydantic pydantic-settings httpx langgraph requests --quiet
 
-# Install editable packages if pyproject.toml / setup.py exists
-for pkg in packages/*; do
-    if [ -d "$pkg" ] && ( [ -f "$pkg/pyproject.toml" ] || [ -f "$pkg/setup.py" ] ); then
+# Install editable local packages in strict dependency order
+LOCAL_PACKAGES=("packages/shared-schemas" "packages/security-audit" "packages/agent-core")
+for pkg in "${LOCAL_PACKAGES[@]}"; do
+    if [ -d "$pkg" ]; then
         echo -e "Installing local package: $pkg"
-        pip install -e "$pkg" --quiet || true
+        pip install -e "$pkg" --no-build-isolation --quiet || pip install -e "$pkg" --quiet || pip install "$pkg" --quiet || true
     fi
 done
 
@@ -55,7 +56,7 @@ done
 echo -e "\n${GREEN}[4/7] Installing Next.js Web Frontend dependencies...${NC}"
 if [ -d "$REPO_ROOT/apps/web" ]; then
     cd "$REPO_ROOT/apps/web"
-    npm install --quiet
+    npm install --quiet || npm install
     cd "$REPO_ROOT"
 fi
 
