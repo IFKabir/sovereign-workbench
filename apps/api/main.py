@@ -65,6 +65,15 @@ async def lifespan(app: FastAPI):
         app.state.vllm_status = "unavailable"
         logger.warning("vLLM unreachable — LLM inference disabled until available")
 
+    # --- Task Router ONNX Warmup ----------------------------------------
+    try:
+        from agent_core.router import TaskRouter
+        router_inst = TaskRouter()
+        warmup_label = router_inst.predict("System diagnostic warmup query")
+        logger.info(f"Task Router JIT pre-warmed — classification: {warmup_label}")
+    except Exception as exc:
+        logger.warning(f"Task Router warmup failed: {exc}")
+
     logger.info("✅ Startup complete")
     yield
 

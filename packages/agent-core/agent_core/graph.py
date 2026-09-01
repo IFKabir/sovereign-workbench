@@ -36,6 +36,7 @@ def route_after_classification(state: WorkbenchState) -> str:
     """Route to the correct tool node based on classified intent."""
     intent = state.get("intent")
     mapping = {
+        "GENERAL_CHAT": "generate_response",
         "VISION_SCHEMATIC": "analyze_pid",
         "RAG_STANDARDS": "retrieve_standards",
         "CODE_SANDBOX": "execute_code",

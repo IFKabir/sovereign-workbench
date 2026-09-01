@@ -1,37 +1,46 @@
-import os
-import httpx
-from agent_core.state import WorkbenchState
 import logging
+from agent_core.state import WorkbenchState
 
 logger = logging.getLogger(__name__)
 
-ACTION_TYPES = [
-    'permit_to_work', 'isolation_certificate', 'exception_generation', 
+CRITICAL_SAFETY_ACTIONS = [
+    'permit_to_work', 'permit-to-work', 'issue_ptw', 'isolation_certificate', 'exception_generation', 
     'safety_override', 'hot_work_permit', 'confined_space_entry', 
-    'pressure_test_authorization'
+    'pressure_test_authorization', 'modify_valve_parameter', 'bypass_safety_interlock',
+    'bypassing', 'isolation_valve', 'exception'
 ]
 
 async def audit_compliance(state: WorkbenchState) -> dict:
-    """Reviews draft outputs for safety-critical patterns to trigger HITL."""
+    """Reviews draft outputs for safety-critical patterns to trigger HITL approval.
+    
+    requires_hitl defaults to False. It only evaluates to True when an explicit
+    safety-critical modification (e.g., MODIFY_VALVE_PARAMETER, ISSUE_PTW, BYPASS_SAFETY_INTERLOCK)
+    is present in the drafted plan/query.
+    """
     query = state.get("query", "").lower()
-    role = state.get("user_role", "OPERATOR")
+    query_normalized = query.replace("-", " ").replace("_", " ")
+    intent = state.get("intent", "")
     
-    # Analyze query and possible draft responses
-    detected_flags = state.get("compliance_flags", [])
+    detected_flags = list(state.get("compliance_flags") or [])
     
-    # Simple keyword check; more advanced implementations would use Qwen2.5-VL to check compliance classification
-    for action in ACTION_TYPES:
-        if action.replace("_", " ") in query:
+    # Conversational queries never trigger HITL
+    if intent == "GENERAL_CHAT":
+        return {
+            "compliance_flags": [],
+            "requires_hitl": False,
+            "current_node": "audit_compliance"
+        }
+    
+    # Check for explicit safety-critical modification keywords
+    for action in CRITICAL_SAFETY_ACTIONS:
+        action_clean = action.replace("-", " ").replace("_", " ")
+        if action_clean in query_normalized or action in query:
             if action not in detected_flags:
                 detected_flags.append(action)
-                
-    requires_hitl = False
     
-    if detected_flags:
-        # If OPERATOR purely asks for advisory information (e.g. "what is hot work?"), it might not trigger HITL. 
-        # But for strict safety, we flag it if actionable keywords are present and role is restrictive.
-        requires_hitl = True
-
+    # HITL is required ONLY if explicit safety-critical actions are detected
+    requires_hitl = len(detected_flags) > 0
+    
     return {
         "compliance_flags": detected_flags,
         "requires_hitl": requires_hitl,
