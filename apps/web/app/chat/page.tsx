@@ -164,7 +164,7 @@ export default function ChatPage() {
   const handleHitlDecision = async (approved: boolean, comment: string) => {
     const currentThread = hitlData?.threadId || threadId;
     try {
-      await fetch('/api/v1/agent/hitl/approve', {
+      const res = await fetch('/api/v1/agent/hitl/approve', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -174,6 +174,8 @@ export default function ChatPage() {
           role: 'SAFETY_OFFICER',
         }),
       });
+
+      const data = await res.json();
 
       setMessages((prev) => [
         ...prev,
@@ -185,6 +187,18 @@ export default function ChatPage() {
           model: 'Audit-Ledger',
         },
       ]);
+
+      if (approved && (data.final_response || data.data?.content)) {
+        const finalAnswer = data.final_response || data.data?.content;
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: 'assistant',
+            content: finalAnswer,
+            model: 'Qwen2.5-VL-7B-Instruct',
+          },
+        ]);
+      }
     } catch (e) {
       console.error('HITL approval POST error:', e);
     }

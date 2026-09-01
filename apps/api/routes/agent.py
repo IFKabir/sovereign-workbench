@@ -136,21 +136,22 @@ async def agent_query(request: AgentQueryRequest):
 async def hitl_approve(response: HITLApprovalResponse):
     """
     Human-In-The-Loop approval endpoint.
-    Resumes an interrupted graph execution with approval status.
+    Resumes an interrupted graph execution with approval status and returns final synthesized response.
     """
     config = {"configurable": {"thread_id": response.thread_id}}
     
     # Check if thread is waiting for approval
     state = graph_app.get_state(config)
     if not state or not state.next:
+        curr_val = state.values if state else {}
         return {
             "status": "success",
             "thread_id": response.thread_id,
             "approved": response.approved,
-            "message": f"Approval signal recorded for thread {response.thread_id}."
+            "final_response": curr_val.get("final_response", f"Approval signal recorded for thread {response.thread_id}.")
         }
         
-    # Resume graph execution
+    # Resume graph execution with approval state update
     update_state = {
         "hitl_approved": response.approved,
         "requires_hitl": False
@@ -158,11 +159,16 @@ async def hitl_approve(response: HITLApprovalResponse):
     
     result = graph_app.invoke(update_state, config=config)
     
+    final_res = result.get("final_response") if isinstance(result, dict) else None
+    if not final_res:
+        curr = graph_app.get_state(config)
+        final_res = curr.values.get("final_response") if (curr and curr.values) else "Action processed after HITL review."
+    
     return {
         "status": "success",
         "thread_id": response.thread_id,
         "approved": response.approved,
-        "final_response": result.get("final_response", "Action processed after HITL review.")
+        "final_response": final_res
     }
 
 @router.get("/trace/{task_id}")

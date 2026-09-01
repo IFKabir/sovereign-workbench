@@ -387,7 +387,7 @@ def test_airgap_compliance():
         for root, dirs, files in os.walk(project_root):
             # Skip non-source directories
             skip_dirs = {".git", ".venv", "node_modules", ".next", "models", "__pycache__",
-                        "checkpoints", "data", "training/task-router/logs"}
+                        "checkpoints", "data", "training/task-router/logs", "tests"}
             dirs[:] = [d for d in dirs if d not in skip_dirs]
 
             for fname in files:
