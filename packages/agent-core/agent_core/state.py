@@ -11,7 +11,10 @@ class WorkbenchState(TypedDict):
     current_node: str
     pid_results: dict | None
     rag_results: dict | None
+    retrieved_context: str | None
     code_output: dict | None
+    sandbox_script: str | None
+    sandbox_stdout: str | None
     compliance_flags: list[str]
     requires_hitl: bool
     hitl_approved: bool | None

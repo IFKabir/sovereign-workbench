@@ -115,6 +115,20 @@ export default function ChatPage() {
                     model: 'Compliance-Auditor',
                   },
                 ]);
+              } else if (parsed.event_type === 'code_result' && parsed.data) {
+                const cd = parsed.data;
+                const scriptBlock = cd.script ? `**Generated Python Script:**\n\`\`\`python\n${cd.script}\n\`\`\`\n\n` : '';
+                const outputBlock = cd.stdout ? `**Execution Output (exit code ${cd.exit_code ?? 0}):**\n\`\`\`\n${cd.stdout}\n\`\`\`` : '';
+                const stderrBlock = cd.stderr ? `\n\n**Stderr:**\n\`\`\`\n${cd.stderr}\n\`\`\`` : '';
+                const sandboxBadge = cd.sandbox_mode ? `\n\n_Sandbox mode: ${cd.sandbox_mode}_` : '';
+                setMessages((prev) => [
+                  ...prev,
+                  {
+                    role: 'assistant',
+                    content: `${scriptBlock}${outputBlock}${stderrBlock}${sandboxBadge}`,
+                    model: 'Code-Sandbox',
+                  },
+                ]);
               } else if (parsed.event_type === 'response' && parsed.data?.content) {
                 assistantText = parsed.data.content;
               } else if (parsed.event_type === 'node_complete' && parsed.data?.final_response) {

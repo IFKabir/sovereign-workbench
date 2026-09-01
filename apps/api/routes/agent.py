@@ -120,7 +120,25 @@ async def agent_query(request: AgentQueryRequest):
                 }
                 yield f'data: {json.dumps(hitl_payload)}\n\n'
             else:
-                final_res = current_state.values.get("final_response") if (current_state and current_state.values) else None
+                final_state_values = current_state.values if (current_state and current_state.values) else {}
+
+                # Emit code sandbox results if present
+                code_out = final_state_values.get("code_output")
+                sandbox_script = final_state_values.get("sandbox_script", "")
+                if code_out and isinstance(code_out, dict) and (code_out.get("stdout") or sandbox_script):
+                    code_payload = {
+                        "event_type": "code_result",
+                        "data": {
+                            "script": sandbox_script,
+                            "stdout": code_out.get("stdout", ""),
+                            "stderr": code_out.get("stderr", ""),
+                            "exit_code": code_out.get("exit_code", -1),
+                            "sandbox_mode": code_out.get("sandbox_mode", "unknown"),
+                        }
+                    }
+                    yield f'data: {json.dumps(code_payload)}\n\n'
+
+                final_res = final_state_values.get("final_response")
                 if not final_res:
                     final_res = "Query processed successfully."
                 yield f'data: {json.dumps({"event_type": "response", "status": "COMPLETED", "requires_approval": False, "data": {"content": final_res}})}\n\n'
@@ -137,6 +155,10 @@ async def hitl_approve(response: HITLApprovalResponse):
     """
     Human-In-The-Loop approval endpoint.
     Resumes an interrupted graph execution with approval status and returns final synthesized response.
+
+    Uses the LangGraph checkpoint resume pattern:
+    1. update_state() to patch the checkpoint with approval signal
+    2. invoke(None, config) to resume from the interrupt point (hitl_gate)
     """
     config = {"configurable": {"thread_id": response.thread_id}}
     
@@ -150,20 +172,29 @@ async def hitl_approve(response: HITLApprovalResponse):
             "approved": response.approved,
             "final_response": curr_val.get("final_response", f"Approval signal recorded for thread {response.thread_id}.")
         }
-        
-    # Resume graph execution with approval state update
-    update_state = {
-        "hitl_approved": response.approved,
-        "requires_hitl": False
-    }
-    
-    result = graph_app.invoke(update_state, config=config)
-    
+
+    # Patch the checkpoint with approval state — this modifies the
+    # checkpointed state *in place* without restarting the graph.
+    await asyncio.to_thread(
+        graph_app.update_state,
+        config,
+        {
+            "hitl_approved": response.approved,
+            "requires_hitl": False,
+        },
+    )
+
+    # Resume graph execution from the interrupt point.
+    # Passing None as input tells LangGraph to continue from where it paused
+    # (hitl_gate → log_audit → generate_response → END), preserving all
+    # accumulated state (query, retrieved_context, rag_results, etc.).
+    result = await asyncio.to_thread(graph_app.invoke, None, config)
+
     final_res = result.get("final_response") if isinstance(result, dict) else None
     if not final_res:
         curr = graph_app.get_state(config)
         final_res = curr.values.get("final_response") if (curr and curr.values) else "Action processed after HITL review."
-    
+
     return {
         "status": "success",
         "thread_id": response.thread_id,

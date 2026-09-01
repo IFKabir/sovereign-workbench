@@ -156,7 +156,22 @@ async def generate_response(state: WorkbenchState) -> dict:
     if pid_res:
         context_parts.append(f"P&ID Analysis Results:\n{pid_res}")
     if code_out:
-        context_parts.append(f"Code Execution Output:\n{code_out}")
+        # code_output may be a dict with stdout/stderr/exit_code from the sandbox
+        if isinstance(code_out, dict):
+            sandbox_script = state.get("sandbox_script", "")
+            stdout = code_out.get("stdout", "")
+            stderr = code_out.get("stderr", "")
+            exit_code = code_out.get("exit_code", -1)
+            parts = []
+            if sandbox_script:
+                parts.append(f"Generated Python Script:\n```python\n{sandbox_script}\n```")
+            if stdout:
+                parts.append(f"Execution Output (exit code {exit_code}):\n{stdout}")
+            if stderr:
+                parts.append(f"Stderr:\n{stderr}")
+            context_parts.append("\n\n".join(parts) if parts else f"Code Execution Output:\n{code_out}")
+        else:
+            context_parts.append(f"Code Execution Output:\n{code_out}")
     if state.get("compliance_flags"):
         context_parts.append(f"Compliance Flags: {', '.join(state['compliance_flags'])}")
 
