@@ -4,7 +4,7 @@ class Settings(BaseSettings):
     """Application settings using pydantic-settings."""
     
     # vLLM Configuration
-    vllm_base_url: str = 'http://localhost:8000/v1'
+    vllm_base_url: str = 'http://localhost:8002/v1'
     vllm_model_name: str = 'Qwen/Qwen2.5-VL-7B-Instruct'
     
     # Qdrant Configuration  
