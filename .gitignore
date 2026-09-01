@@ -4,19 +4,26 @@ __pycache__/
 .venv/
 dist/
 *.egg-info/
+.cache/
 
 # Node
 node_modules/
 .next/
 out/
+*.tsbuildinfo
 
-# Model weights
+# Model weights & data
 *.onnx
 *.pt
 *.safetensors
 *.bin
 models/
 data/
+training/*/checkpoints/
+
+# Logs & Temporary files
+*.log
+scratch/
 
 # Environment
 .env

@@ -1,0 +1,200 @@
+{"text": "Identify the interlock logic shown in this cause-and-effect diagram", "label": "VISION_SCHEMATIC", "category_id": 2}
+{"text": "List the PNGRB regulations for fire protection integrity management", "label": "RAG_STANDARDS", "category_id": 3}
+{"text": "What does OISD-510 say about fire protection for petroleum depots?", "label": "RAG_STANDARDS", "category_id": 3}
+{"text": "What are the inspection criteria for recycle gas compressor under API 2825?", "label": "RAG_STANDARDS", "category_id": 3}
+{"text": "What were the conclusions of the material compatibility study?", "label": "DOC_REASONING", "category_id": 0}
+{"text": "List all the nozzles on the accumulator detailed drawing", "label": "VISION_SCHEMATIC", "category_id": 2}
+{"text": "List all the nozzles on the reactor bed detailed drawing", "label": "VISION_SCHEMATIC", "category_id": 2}
+{"text": "Extract the design conditions from the equipment data sheet", "label": "VISION_SCHEMATIC", "category_id": 2}
+{"text": "List the PNGRB regulations for pressure vessel integrity management", "label": "RAG_STANDARDS", "category_id": 3}
+{"text": "What is the permissible exposure limit for benzene according to ACGIH?", "label": "RAG_STANDARDS", "category_id": 3}
+{"text": "Summarize the testing procedures in ASTM D93", "label": "RAG_STANDARDS", "category_id": 3}
+{"text": "Compare the maintenance schedules of HCU and VDU-2", "label": "DOC_REASONING", "category_id": 0}
+{"text": "Identify the interlock logic shown in this cause-and-effect diagram", "label": "VISION_SCHEMATIC", "category_id": 2}
+{"text": "Estimate the pump head required for the naphtha transfer line", "label": "CODE_SANDBOX", "category_id": 1}
+{"text": "Write a script to model the kinetics of the alkylation reaction", "label": "CODE_SANDBOX", "category_id": 1}
+{"text": "Summarize the key findings from the vacuum distillation unit inspection report", "label": "DOC_REASONING", "category_id": 0}
+{"text": "Write a Python script to optimize the Basrah Heavy blend ratio for maximum GRM", "label": "CODE_SANDBOX", "category_id": 1}
+{"text": "Explain the API 2825 inspection interval requirements", "label": "RAG_STANDARDS", "category_id": 3}
+{"text": "Extract the design conditions from the equipment data sheet", "label": "VISION_SCHEMATIC", "category_id": 2}
+{"text": "List all safety relief valves shown in this piping schematic", "label": "VISION_SCHEMATIC", "category_id": 2}
+{"text": "What type of flow meter is installed on the feed line line?", "label": "VISION_SCHEMATIC", "category_id": 2}
+{"text": "Identify the control loops associated with the delayed coker", "label": "VISION_SCHEMATIC", "category_id": 2}
+{"text": "What are the OSHA requirements for relief system?", "label": "RAG_STANDARDS", "category_id": 3}
+{"text": "List all the nozzles on the reactor bed detailed drawing", "label": "VISION_SCHEMATIC", "category_id": 2}
+{"text": "Compute the NPSH available for the gear pump", "label": "CODE_SANDBOX", "category_id": 1}
+{"text": "Find all the tie-in points in this process flow diagram", "label": "VISION_SCHEMATIC", "category_id": 2}
+{"text": "Calculate the compressor power required to compress methane to 10 bar", "label": "CODE_SANDBOX", "category_id": 1}
+{"text": "What are the ASME BPVC Section II requirements for boiler?", "label": "RAG_STANDARDS", "category_id": 3}
+{"text": "Find the bypass valve around the condenser", "label": "VISION_SCHEMATIC", "category_id": 2}
+{"text": "What are the guidelines for storage tank as per OISD-STD-118?", "label": "RAG_STANDARDS", "category_id": 3}
+{"text": "Generate a timeline of events from the shift handover log", "label": "DOC_REASONING", "category_id": 0}
+{"text": "List the NACE standards for duplex in sour service", "label": "RAG_STANDARDS", "category_id": 3}
+{"text": "Verify if the P&ID matches the 3D model for the amine treating", "label": "VISION_SCHEMATIC", "category_id": 2}
+{"text": "What are the best practices for confined space entry according to CCPS?", "label": "RAG_STANDARDS", "category_id": 3}
+{"text": "What are the key takeaways from the environmental audit report?", "label": "DOC_REASONING", "category_id": 0}
+{"text": "What are the ASME BPVC Section II requirements for boiler?", "label": "RAG_STANDARDS", "category_id": 3}
+{"text": "Extract the pipe sizes and materials from this isometric drawing", "label": "VISION_SCHEMATIC", "category_id": 2}
+{"text": "What are the recommendations in the last turnaround planning document for delayed coker?", "label": "DOC_REASONING", "category_id": 0}
+{"text": "Determine the sizing for the safety relief valve on the absorber", "label": "CODE_SANDBOX", "category_id": 1}
+{"text": "List all safety relief valves shown in this piping schematic", "label": "VISION_SCHEMATIC", "category_id": 2}
+{"text": "Calculate the heat duty for the condenser given inlet temp 400\u00b0C", "label": "CODE_SANDBOX", "category_id": 1}
+{"text": "What are the IS 2825 requirements for unfired pressure vessels?", "label": "RAG_STANDARDS", "category_id": 3}
+{"text": "Develop a mass balance model for the hydrocracker unit", "label": "CODE_SANDBOX", "category_id": 1}
+{"text": "Extract the design conditions from the equipment data sheet", "label": "VISION_SCHEMATIC", "category_id": 2}
+{"text": "Outline the steps taken during the emergency shutdown procedure", "label": "DOC_REASONING", "category_id": 0}
+{"text": "Compare the maintenance schedules of VDU-1 and CDU-2", "label": "DOC_REASONING", "category_id": 0}
+{"text": "List the EPA regulations concerning NOx emissions", "label": "RAG_STANDARDS", "category_id": 3}
+{"text": "Highlight the critical action items from the morning production meeting", "label": "DOC_REASONING", "category_id": 0}
+{"text": "Trace the flow path from the crude tank to the reactor", "label": "VISION_SCHEMATIC", "category_id": 2}
+{"text": "Compute the NPSH available for the gear pump", "label": "CODE_SANDBOX", "category_id": 1}
+{"text": "Identify the instrument air connections in this schematic", "label": "VISION_SCHEMATIC", "category_id": 2}
+{"text": "Identify the interlock logic shown in this cause-and-effect diagram", "label": "VISION_SCHEMATIC", "category_id": 2}
+{"text": "Highlight the critical action items from the morning production meeting", "label": "DOC_REASONING", "category_id": 0}
+{"text": "List the NACE standards for carbon steel in sour service", "label": "RAG_STANDARDS", "category_id": 3}
+{"text": "List the EPA regulations concerning VOC emissions", "label": "RAG_STANDARDS", "category_id": 3}
+{"text": "What are the best practices for lifting according to CCPS?", "label": "RAG_STANDARDS", "category_id": 3}
+{"text": "Find all the tie-in points in this process flow diagram", "label": "VISION_SCHEMATIC", "category_id": 2}
+{"text": "Calculate the compressor power required to compress hydrogen to 50 bar", "label": "CODE_SANDBOX", "category_id": 1}
+{"text": "List the PNGRB regulations for pipeline integrity management", "label": "RAG_STANDARDS", "category_id": 3}
+{"text": "Write a function to estimate the friction factor in a galvanized pipe", "label": "CODE_SANDBOX", "category_id": 1}
+{"text": "Develop a mass balance model for the crude distillation unit unit", "label": "CODE_SANDBOX", "category_id": 1}
+{"text": "What are the OSHA requirements for pipeline?", "label": "RAG_STANDARDS", "category_id": 3}
+{"text": "Generate a timeline of events from the shift handover log", "label": "DOC_REASONING", "category_id": 0}
+{"text": "What is the status of the action items from the last hazard review?", "label": "DOC_REASONING", "category_id": 0}
+{"text": "What is the tag number of the level indicator shown here?", "label": "VISION_SCHEMATIC", "category_id": 2}
+{"text": "Identify the control loops associated with the hydrocracker", "label": "VISION_SCHEMATIC", "category_id": 2}
+{"text": "Extract the design conditions from the equipment data sheet", "label": "VISION_SCHEMATIC", "category_id": 2}
+{"text": "What are the ASME BPVC Section VIII requirements for boiler?", "label": "RAG_STANDARDS", "category_id": 3}
+{"text": "Calculate the heat duty for the recycle gas compressor given inlet temp 400\u00b0C", "label": "CODE_SANDBOX", "category_id": 1}
+{"text": "Verify if the P&ID matches the 3D model for the flare system", "label": "VISION_SCHEMATIC", "category_id": 2}
+{"text": "List the NACE standards for inconel in sour service", "label": "RAG_STANDARDS", "category_id": 3}
+{"text": "Calculate the heat duty for the feed pump given inlet temp 350\u00b0C", "label": "CODE_SANDBOX", "category_id": 1}
+{"text": "Find the bypass valve around the feed pump", "label": "VISION_SCHEMATIC", "category_id": 2}
+{"text": "Estimate the thermal efficiency of the reformer heater", "label": "CODE_SANDBOX", "category_id": 1}
+{"text": "Generate a timeline of events from the shift handover log", "label": "DOC_REASONING", "category_id": 0}
+{"text": "Calculate API gravity and sulfur content for the Kuwait Export crude blend", "label": "CODE_SANDBOX", "category_id": 1}
+{"text": "Trace the cooling water supply and return lines for the preheat train", "label": "VISION_SCHEMATIC", "category_id": 2}
+{"text": "Calculate the LMTD for the overhead condenser network", "label": "CODE_SANDBOX", "category_id": 1}
+{"text": "What are the recommendations in the last turnaround planning document for hydrocracker?", "label": "DOC_REASONING", "category_id": 0}
+{"text": "What are the IS 3183 requirements for unfired pressure vessels?", "label": "RAG_STANDARDS", "category_id": 3}
+{"text": "Trace the cooling water supply and return lines for the feed/effluent exchanger", "label": "VISION_SCHEMATIC", "category_id": 2}
+{"text": "Highlight the critical action items from the morning production meeting", "label": "DOC_REASONING", "category_id": 0}
+{"text": "Compute the pressure drop across the separator using Ergun equation", "label": "CODE_SANDBOX", "category_id": 1}
+{"text": "What were the root causes identified in the furnace tube leak investigation?", "label": "DOC_REASONING", "category_id": 0}
+{"text": "What is the permissible exposure limit for ammonia according to ACGIH?", "label": "RAG_STANDARDS", "category_id": 3}
+{"text": "Write a script to analyze the vibration data from the recycle gas compressor", "label": "CODE_SANDBOX", "category_id": 1}
+{"text": "Summarize the testing procedures in ASTM D1298", "label": "RAG_STANDARDS", "category_id": 3}
+{"text": "Calculate the compressor power required to compress hydrogen to 150 bar", "label": "CODE_SANDBOX", "category_id": 1}
+{"text": "Trace the flow path from the storage sphere to the reactor", "label": "VISION_SCHEMATIC", "category_id": 2}
+{"text": "Calculate the LMTD for the preheat train network", "label": "CODE_SANDBOX", "category_id": 1}
+{"text": "What are the key takeaways from the environmental audit report?", "label": "DOC_REASONING", "category_id": 0}
+{"text": "Calculate the compressor power required to compress hydrogen to 10 bar", "label": "CODE_SANDBOX", "category_id": 1}
+{"text": "Outline the steps taken during the emergency shutdown procedure", "label": "DOC_REASONING", "category_id": 0}
+{"text": "List the EPA regulations concerning PM emissions", "label": "RAG_STANDARDS", "category_id": 3}
+{"text": "Compare the maintenance schedules of VDU-1 and VDU-2", "label": "DOC_REASONING", "category_id": 0}
+{"text": "Identify the hazardous area classifications in this layout", "label": "VISION_SCHEMATIC", "category_id": 2}
+{"text": "Simulate the temperature profile in the CSTR catalyst bed", "label": "CODE_SANDBOX", "category_id": 1}
+{"text": "Compute the NPSH available for the rotary pump", "label": "CODE_SANDBOX", "category_id": 1}
+{"text": "What is the tag number of the pressure transmitter shown here?", "label": "VISION_SCHEMATIC", "category_id": 2}
+{"text": "Identify all control valves in this P&ID drawing", "label": "VISION_SCHEMATIC", "category_id": 2}
+{"text": "What are the guidelines for pressure vessel as per OISD-STD-2825?", "label": "RAG_STANDARDS", "category_id": 3}
+{"text": "Trace the cooling water supply and return lines for the bottoms cooler", "label": "VISION_SCHEMATIC", "category_id": 2}
+{"text": "Trace the cooling water supply and return lines for the feed/effluent exchanger", "label": "VISION_SCHEMATIC", "category_id": 2}
+{"text": "Compute the NPSH available for the centrifugal pump", "label": "CODE_SANDBOX", "category_id": 1}
+{"text": "What are the ATEX directive requirements for recycle gas compressor?", "label": "RAG_STANDARDS", "category_id": 3}
+{"text": "Generate a timeline of events from the shift handover log", "label": "DOC_REASONING", "category_id": 0}
+{"text": "Determine the sizing for the safety relief valve on the stripper", "label": "CODE_SANDBOX", "category_id": 1}
+{"text": "Locate the feed pump in the plot plan", "label": "VISION_SCHEMATIC", "category_id": 2}
+{"text": "Cross-reference the daily yield reports for inconsistencies", "label": "DOC_REASONING", "category_id": 0}
+{"text": "Identify the recurring issues mentioned in the operator logs", "label": "DOC_REASONING", "category_id": 0}
+{"text": "Estimate the pump head required for the LPG transfer line", "label": "CODE_SANDBOX", "category_id": 1}
+{"text": "List all safety relief valves shown in this piping schematic", "label": "VISION_SCHEMATIC", "category_id": 2}
+{"text": "Model the phase equilibrium for the flare system system", "label": "CODE_SANDBOX", "category_id": 1}
+{"text": "Extract the performance metrics from the plant manager's update", "label": "DOC_REASONING", "category_id": 0}
+{"text": "Analyze the trend in hydrogen consumption over the last quarter", "label": "DOC_REASONING", "category_id": 0}
+{"text": "Summarize the NFPA 2825 guidelines for toxic gas", "label": "RAG_STANDARDS", "category_id": 3}
+{"text": "Calculate the residence time in the separator", "label": "CODE_SANDBOX", "category_id": 1}
+{"text": "What are the IS 2825 requirements for unfired pressure vessels?", "label": "RAG_STANDARDS", "category_id": 3}
+{"text": "Explain the ISO 120 standard for amine treating", "label": "RAG_STANDARDS", "category_id": 3}
+{"text": "Estimate the thermal efficiency of the coker heater", "label": "CODE_SANDBOX", "category_id": 1}
+{"text": "What safety distances does OISD-2825 specify for LPG storage?", "label": "RAG_STANDARDS", "category_id": 3}
+{"text": "Find all the tie-in points in this process flow diagram", "label": "VISION_SCHEMATIC", "category_id": 2}
+{"text": "Explain the API 117 inspection interval requirements", "label": "RAG_STANDARDS", "category_id": 3}
+{"text": "What are the IS 510 requirements for unfired pressure vessels?", "label": "RAG_STANDARDS", "category_id": 3}
+{"text": "Compare the maintenance schedules of VDU-1 and ARU", "label": "DOC_REASONING", "category_id": 0}
+{"text": "List the NACE standards for stainless steel in sour service", "label": "RAG_STANDARDS", "category_id": 3}
+{"text": "Extract the design conditions from the equipment data sheet", "label": "VISION_SCHEMATIC", "category_id": 2}
+{"text": "Find the bypass valve around the reboiler", "label": "VISION_SCHEMATIC", "category_id": 2}
+{"text": "Develop a mass balance model for the hydrocracker unit", "label": "CODE_SANDBOX", "category_id": 1}
+{"text": "What are the best practices for confined space entry according to CCPS?", "label": "RAG_STANDARDS", "category_id": 3}
+{"text": "Analyze the trend in hydrogen consumption over the last quarter", "label": "DOC_REASONING", "category_id": 0}
+{"text": "Summarize the IEC 653 standard for level indicator", "label": "RAG_STANDARDS", "category_id": 3}
+{"text": "Explain the API 120 inspection interval requirements", "label": "RAG_STANDARDS", "category_id": 3}
+{"text": "Compute the NPSH available for the positive displacement pump", "label": "CODE_SANDBOX", "category_id": 1}
+{"text": "Estimate the thermal efficiency of the reformer heater", "label": "CODE_SANDBOX", "category_id": 1}
+{"text": "Identify the control loops associated with the delayed coker", "label": "VISION_SCHEMATIC", "category_id": 2}
+{"text": "What safety distances does OISD-2825 specify for LPG storage?", "label": "RAG_STANDARDS", "category_id": 3}
+{"text": "Model the phase equilibrium for the sour water stripping system", "label": "CODE_SANDBOX", "category_id": 1}
+{"text": "Write a script to model the kinetics of the alkylation reaction", "label": "CODE_SANDBOX", "category_id": 1}
+{"text": "Consolidate the weekly maintenance reports into a single summary", "label": "DOC_REASONING", "category_id": 0}
+{"text": "What were the root causes identified in the compressor trip investigation?", "label": "DOC_REASONING", "category_id": 0}
+{"text": "Extract the performance metrics from the plant manager's update", "label": "DOC_REASONING", "category_id": 0}
+{"text": "Write a script to analyze the vibration data from the recycle gas compressor", "label": "CODE_SANDBOX", "category_id": 1}
+{"text": "Compute the pressure drop across the separator using Ergun equation", "label": "CODE_SANDBOX", "category_id": 1}
+{"text": "Compute the pressure drop across the accumulator using Ergun equation", "label": "CODE_SANDBOX", "category_id": 1}
+{"text": "Generate a timeline of events from the shift handover log", "label": "DOC_REASONING", "category_id": 0}
+{"text": "Write a function to estimate the friction factor in a alloy pipe", "label": "CODE_SANDBOX", "category_id": 1}
+{"text": "Extract the performance metrics from the plant manager's update", "label": "DOC_REASONING", "category_id": 0}
+{"text": "Summarize the NFPA 3183 guidelines for toxic gas", "label": "RAG_STANDARDS", "category_id": 3}
+{"text": "Generate a timeline of events from the shift handover log", "label": "DOC_REASONING", "category_id": 0}
+{"text": "Extract the design conditions from the equipment data sheet", "label": "VISION_SCHEMATIC", "category_id": 2}
+{"text": "Find the bypass valve around the reboiler", "label": "VISION_SCHEMATIC", "category_id": 2}
+{"text": "Write a script to model the kinetics of the isomerization reaction", "label": "CODE_SANDBOX", "category_id": 1}
+{"text": "What are the inspection criteria for condenser under API 117?", "label": "RAG_STANDARDS", "category_id": 3}
+{"text": "What are the recommendations in the last turnaround planning document for vacuum distillation unit?", "label": "DOC_REASONING", "category_id": 0}
+{"text": "Determine the sizing for the safety relief valve on the absorber", "label": "CODE_SANDBOX", "category_id": 1}
+{"text": "Write a function to estimate the friction factor in a stainless steel pipe", "label": "CODE_SANDBOX", "category_id": 1}
+{"text": "List the NACE standards for carbon steel in sour service", "label": "RAG_STANDARDS", "category_id": 3}
+{"text": "What safety distances does OISD-3183 specify for LPG storage?", "label": "RAG_STANDARDS", "category_id": 3}
+{"text": "Write a script to analyze the vibration data from the refrigeration compressor", "label": "CODE_SANDBOX", "category_id": 1}
+{"text": "Trace the electrical routing for the pump motor", "label": "VISION_SCHEMATIC", "category_id": 2}
+{"text": "What are the IS 116 requirements for unfired pressure vessels?", "label": "RAG_STANDARDS", "category_id": 3}
+{"text": "Write a script to model the kinetics of the alkylation reaction", "label": "CODE_SANDBOX", "category_id": 1}
+{"text": "What is the status of the action items from the last hazard review?", "label": "DOC_REASONING", "category_id": 0}
+{"text": "Locate the reboiler in the plot plan", "label": "VISION_SCHEMATIC", "category_id": 2}
+{"text": "Simulate the temperature profile in the CSTR catalyst bed", "label": "CODE_SANDBOX", "category_id": 1}
+{"text": "Draft an executive summary for the monthly tank farm performance report", "label": "DOC_REASONING", "category_id": 0}
+{"text": "Model the phase equilibrium for the amine treating system", "label": "CODE_SANDBOX", "category_id": 1}
+{"text": "Simulate the temperature profile in the CSTR catalyst bed", "label": "CODE_SANDBOX", "category_id": 1}
+{"text": "Simulate the splitter with 30 theoretical stages", "label": "CODE_SANDBOX", "category_id": 1}
+{"text": "Estimate the thermal efficiency of the coker heater", "label": "CODE_SANDBOX", "category_id": 1}
+{"text": "Generate a timeline of events from the shift handover log", "label": "DOC_REASONING", "category_id": 0}
+{"text": "Summarize the feedback from the operator training session", "label": "DOC_REASONING", "category_id": 0}
+{"text": "List all safety relief valves shown in this piping schematic", "label": "VISION_SCHEMATIC", "category_id": 2}
+{"text": "What is the status of the action items from the last hazard review?", "label": "DOC_REASONING", "category_id": 0}
+{"text": "Calculate the LMTD for the bottoms cooler network", "label": "CODE_SANDBOX", "category_id": 1}
+{"text": "Model the phase equilibrium for the flare system system", "label": "CODE_SANDBOX", "category_id": 1}
+{"text": "Calculate the LMTD for the feed/effluent exchanger network", "label": "CODE_SANDBOX", "category_id": 1}
+{"text": "Identify the hazardous area classifications in this layout", "label": "VISION_SCHEMATIC", "category_id": 2}
+{"text": "List the NACE standards for stainless steel in sour service", "label": "RAG_STANDARDS", "category_id": 3}
+{"text": "What are the OSHA requirements for pipeline?", "label": "RAG_STANDARDS", "category_id": 3}
+{"text": "Compute the pressure drop across the separator using Ergun equation", "label": "CODE_SANDBOX", "category_id": 1}
+{"text": "Compute the NPSH available for the gear pump", "label": "CODE_SANDBOX", "category_id": 1}
+{"text": "Compute the pressure drop across the separator using Ergun equation", "label": "CODE_SANDBOX", "category_id": 1}
+{"text": "List the NACE standards for duplex in sour service", "label": "RAG_STANDARDS", "category_id": 3}
+{"text": "Identify the instrument air connections in this schematic", "label": "VISION_SCHEMATIC", "category_id": 2}
+{"text": "Compute the NPSH available for the gear pump", "label": "CODE_SANDBOX", "category_id": 1}
+{"text": "List all safety relief valves shown in this piping schematic", "label": "VISION_SCHEMATIC", "category_id": 2}
+{"text": "Trace the cooling water supply and return lines for the overhead condenser", "label": "VISION_SCHEMATIC", "category_id": 2}
+{"text": "What are the ATEX directive requirements for recycle gas compressor?", "label": "RAG_STANDARDS", "category_id": 3}
+{"text": "Find the bypass valve around the reboiler", "label": "VISION_SCHEMATIC", "category_id": 2}
+{"text": "Analyze the trend in electricity consumption over the last quarter", "label": "DOC_REASONING", "category_id": 0}
+{"text": "Find the bypass valve around the feed pump", "label": "VISION_SCHEMATIC", "category_id": 2}
+{"text": "List all safety relief valves shown in this piping schematic", "label": "VISION_SCHEMATIC", "category_id": 2}
+{"text": "Estimate the pump head required for the gas oil transfer line", "label": "CODE_SANDBOX", "category_id": 1}
+{"text": "Identify the instrument air connections in this schematic", "label": "VISION_SCHEMATIC", "category_id": 2}
+{"text": "Summarize the IEC 116 standard for flow meter", "label": "RAG_STANDARDS", "category_id": 3}
+{"text": "Identify the recurring issues mentioned in the operator logs", "label": "DOC_REASONING", "category_id": 0}
+{"text": "What is the tag number of the temperature sensor shown here?", "label": "VISION_SCHEMATIC", "category_id": 2}
+{"text": "Estimate the pump head required for the LPG transfer line", "label": "CODE_SANDBOX", "category_id": 1}
