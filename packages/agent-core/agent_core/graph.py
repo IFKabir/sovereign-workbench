@@ -28,6 +28,29 @@ from agent_core.nodes import (
 logger = logging.getLogger(__name__)
 
 
+def reset_ephemeral_state(state: WorkbenchState) -> dict:
+    """Reset ephemeral tool output keys at the start of every new query.
+    
+    Prevents stale code_output, pid_results, etc. from leaking across
+    conversational turns when the LangGraph checkpointer persists state.
+    """
+    return {
+        "code_output": None,
+        "sandbox_script": None,
+        "sandbox_stdout": None,
+        "pid_results": None,
+        "retrieved_context": None,
+        "rag_results": None,
+        "rag_context": None,
+        "compliance_flags": [],
+        "requires_hitl": False,
+        "hitl_approved": None,
+        "final_response": None,
+        "error": None,
+        "current_node": "reset_ephemeral_state",
+    }
+
+
 # ---------------------------------------------------------------------------
 # Routing functions
 # ---------------------------------------------------------------------------
@@ -139,24 +162,30 @@ async def generate_response(state: WorkbenchState) -> dict:
     vllm_url = os.environ.get("VLLM_BASE_URL", "http://localhost:8000/v1")
 
     # --- Build generic context block from prior nodes --------------------
+    # Only aggregate context from the node that was actually executed
+    # in this turn, based on the classified intent.
     context_parts: list[str] = []
+    intent = state.get("intent", "")
 
+    # RAG / doc context — always relevant for RAG_STANDARDS, DOC_REASONING, and as supplementary
     retrieved_ctx = state.get("retrieved_context") or state.get("rag_context")
     rag_res = state.get("rag_results")
-    pid_res = state.get("pid_results")
-    code_out = state.get("code_output")
+    if intent in ("RAG_STANDARDS", "DOC_REASONING") or (not intent):
+        if retrieved_ctx:
+            context_parts.append(f"{retrieved_ctx}")
+        elif rag_res and isinstance(rag_res, dict):
+            docs = rag_res.get("retrieved_docs") or []
+            if docs:
+                context_parts.append("\n\n".join(docs))
 
-    if retrieved_ctx:
-        context_parts.append(f"{retrieved_ctx}")
-    elif rag_res and isinstance(rag_res, dict):
-        docs = rag_res.get("retrieved_docs") or []
-        if docs:
-            context_parts.append("\n\n".join(docs))
-            
-    if pid_res:
+    # P&ID analysis — only when this turn classified as VISION_SCHEMATIC
+    pid_res = state.get("pid_results")
+    if intent == "VISION_SCHEMATIC" and pid_res:
         context_parts.append(f"P&ID Analysis Results:\n{pid_res}")
-    if code_out:
-        # code_output may be a dict with stdout/stderr/exit_code from the sandbox
+
+    # Code sandbox output — only when this turn classified as CODE_SANDBOX
+    code_out = state.get("code_output")
+    if intent == "CODE_SANDBOX" and code_out:
         if isinstance(code_out, dict):
             sandbox_script = state.get("sandbox_script", "")
             stdout = code_out.get("stdout", "")
@@ -165,13 +194,20 @@ async def generate_response(state: WorkbenchState) -> dict:
             parts = []
             if sandbox_script:
                 parts.append(f"Generated Python Script:\n```python\n{sandbox_script}\n```")
-            if stdout:
+            if exit_code == 0 and stdout:
                 parts.append(f"Execution Output (exit code {exit_code}):\n{stdout}")
-            if stderr:
-                parts.append(f"Stderr:\n{stderr}")
+            elif exit_code != 0:
+                # Feed error context so the LLM can explain the failure
+                err_msg = stderr or stdout or "Script execution failed with no output."
+                parts.append(f"Script Execution FAILED (exit code {exit_code}):\n{err_msg}")
+                parts.append(
+                    "Explain the mathematical domain constraint or coding error "
+                    "that caused this failure, and provide the corrected calculation."
+                )
             context_parts.append("\n\n".join(parts) if parts else f"Code Execution Output:\n{code_out}")
         else:
             context_parts.append(f"Code Execution Output:\n{code_out}")
+
     if state.get("compliance_flags"):
         context_parts.append(f"Compliance Flags: {', '.join(state['compliance_flags'])}")
 
@@ -257,6 +293,7 @@ def build_workbench_graph():
 
     # --- Add nodes -------------------------------------------------------
     builder.add_node("classify_input", classify_input)
+    builder.add_node("reset_ephemeral_state", reset_ephemeral_state)
     builder.add_node("analyze_pid", analyze_pid)
     builder.add_node("retrieve_standards", retrieve_standards)
     builder.add_node("execute_code", execute_code)
@@ -266,7 +303,8 @@ def build_workbench_graph():
     builder.add_node("generate_response", generate_response)
 
     # --- Entry point -----------------------------------------------------
-    builder.set_entry_point("classify_input")
+    builder.set_entry_point("reset_ephemeral_state")
+    builder.add_edge("reset_ephemeral_state", "classify_input")
 
     # --- Conditional routing after classification ------------------------
     builder.add_conditional_edges(

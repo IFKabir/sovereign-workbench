@@ -9,8 +9,8 @@
 ## Equipment Status
 | Tag Number | Equipment | Status | Readings/Notes |
 | :--- | :--- | :--- | :--- |
-| P-201A | Bottoms Pump A | RUNNING | Disch Pr: 12.5 kg/cm2 |
-| P-201B | Bottoms Pump B | STANDBY | Ready for auto-start |
+| P-201A | Bottoms Pump A | OPERATING | Normal — Disch Pr: 12.5 kg/cm2, bearing temp 62°C |
+| P-201B | Bottoms Pump B | STANDBY | Minor gland packing leak detected — drip rate ~2 drops/min, maintenance notified |
 | H-101 | Crude Heater | NORMAL | COT: 360 C, Draft: -2.5 mmH2O |
 | V-102 | Desalter | NORMAL | Interface level: 45% |
 | C-101 | Main Fractionator | NORMAL | Top Temp: 110 C, Btm Temp: 355 C |

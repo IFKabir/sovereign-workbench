@@ -2,27 +2,122 @@ import pytest
 from agent_core.graph import build_workbench_graph, hitl_gate
 from agent_core.nodes.compliance_auditor import audit_compliance
 
-@pytest.mark.asyncio
-async def test_hitl_compliance_audit_flagging():
-    # Advisory query -> requires_hitl False
-    advisory_state = {
-        "query": "What is the flash point of diesel according to MSDS?",
-        "role": "OPERATOR",
-        "user_id": "op_1"
-    }
-    adv_res = await audit_compliance(advisory_state)
-    assert adv_res.get("requires_hitl") is False
+# ---------------------------------------------------------------------------
+# HITL Selectivity: Read-only queries should NEVER trigger HITL
+# ---------------------------------------------------------------------------
 
-    # Safety-critical modification -> requires_hitl True
-    critical_state = {
-        "query": "Generate a Permit-to-Work (PTW) exception to MODIFY_VALVE_PARAMETER on isolation valve V-101",
+@pytest.mark.asyncio
+async def test_hitl_no_trigger_on_read_only_advisory():
+    """Advisory/informational queries should not require HITL."""
+    state = {
+        "query": "What is the flash point of diesel according to MSDS?",
+        "intent": "RAG_STANDARDS",
         "role": "OPERATOR",
         "user_id": "op_1"
     }
-    crit_res = await audit_compliance(critical_state)
-    assert crit_res.get("requires_hitl") is True
-    flags = [f.lower() for f in crit_res.get("compliance_flags", [])]
-    assert any(flag in flags for flag in ["permit_to_work", "permit-to-work", "modify_valve_parameter", "ptw", "exception"])
+    res = await audit_compliance(state)
+    assert res.get("requires_hitl") is False
+
+@pytest.mark.asyncio
+async def test_hitl_no_trigger_on_inspection_with_bypass_keyword():
+    """Inspection of a bypass line should NOT trigger HITL despite 'bypass' keyword."""
+    state = {
+        "query": "Inspect the CDU bypass line schematic. Does Valve CV-101 follow a compliant Double Block and Bleed arrangement?",
+        "intent": "VISION_SCHEMATIC",
+        "role": "OPERATOR",
+        "user_id": "op_1"
+    }
+    res = await audit_compliance(state)
+    assert res.get("requires_hitl") is False
+
+@pytest.mark.asyncio
+async def test_hitl_no_trigger_on_list_isolation_requirements():
+    """Asking about isolation requirements is read-only, not an action."""
+    state = {
+        "query": "What are the isolation requirements for valve maintenance under OISD-105?",
+        "intent": "RAG_STANDARDS",
+        "role": "OPERATOR",
+        "user_id": "op_1"
+    }
+    res = await audit_compliance(state)
+    assert res.get("requires_hitl") is False
+
+@pytest.mark.asyncio
+async def test_hitl_no_trigger_on_summarize_handover():
+    """Summarize query should not trigger HITL."""
+    state = {
+        "query": "Summarize the pump status in the handover report",
+        "intent": "DOC_REASONING",
+        "role": "OPERATOR",
+        "user_id": "op_1"
+    }
+    res = await audit_compliance(state)
+    assert res.get("requires_hitl") is False
+
+@pytest.mark.asyncio
+async def test_hitl_no_trigger_on_list_isa_tags():
+    """Listing ISA-5.1 tags is a read-only inspection."""
+    state = {
+        "query": "List all ISA-5.1 tags in the CDU bypass schematic",
+        "intent": "VISION_SCHEMATIC",
+        "role": "OPERATOR",
+        "user_id": "op_1"
+    }
+    res = await audit_compliance(state)
+    assert res.get("requires_hitl") is False
+
+# ---------------------------------------------------------------------------
+# HITL Selectivity: Action-modifying queries SHOULD trigger HITL
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_hitl_triggers_on_generate_ptw():
+    """Generating a Permit-to-Work should trigger HITL."""
+    state = {
+        "query": "Generate a Permit-to-Work (PTW) for isolation valve V-101",
+        "intent": "CODE_SANDBOX",
+        "role": "OPERATOR",
+        "user_id": "op_1"
+    }
+    res = await audit_compliance(state)
+    assert res.get("requires_hitl") is True
+    assert len(res.get("compliance_flags", [])) > 0
+
+@pytest.mark.asyncio
+async def test_hitl_triggers_on_hot_work_permit():
+    """Hot work permit generation should trigger HITL."""
+    state = {
+        "query": "Generate a Permit-to-Work (PTW) hot work permit for welding on Line-101",
+        "intent": "CODE_SANDBOX",
+        "role": "OPERATOR",
+        "user_id": "op_1"
+    }
+    res = await audit_compliance(state)
+    assert res.get("requires_hitl") is True
+
+@pytest.mark.asyncio
+async def test_hitl_triggers_on_bypass_safety_interlock():
+    """Bypassing a safety interlock is action-modifying and should trigger HITL."""
+    state = {
+        "query": "Bypass the safety interlock on relief valve PSV-102",
+        "intent": "CODE_SANDBOX",
+        "role": "OPERATOR",
+        "user_id": "op_1"
+    }
+    res = await audit_compliance(state)
+    assert res.get("requires_hitl") is True
+
+@pytest.mark.asyncio
+async def test_hitl_triggers_on_modify_setpoint():
+    """Modifying a setpoint is action-modifying."""
+    state = {
+        "query": "Modify the setpoint of PIC-301 from 12 to 15 kg/cm2",
+        "intent": "CODE_SANDBOX",
+        "role": "OPERATOR",
+        "user_id": "op_1"
+    }
+    res = await audit_compliance(state)
+    assert res.get("requires_hitl") is True
 
 def test_langgraph_compilation():
     graph = build_workbench_graph()
