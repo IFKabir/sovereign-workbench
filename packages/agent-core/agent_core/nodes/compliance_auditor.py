@@ -7,7 +7,7 @@ CRITICAL_SAFETY_ACTIONS = [
     'permit_to_work', 'permit-to-work', 'issue_ptw', 'isolation_certificate', 'exception_generation', 
     'safety_override', 'hot_work_permit', 'confined_space_entry', 
     'pressure_test_authorization', 'modify_valve_parameter', 'bypass_safety_interlock',
-    'bypassing', 'isolation_valve', 'exception'
+    'bypassing', 'isolation_valve', 'exception', 'ptw', 'permit', 'bypass', 'isolation'
 ]
 
 async def audit_compliance(state: WorkbenchState) -> dict:
