@@ -175,8 +175,7 @@ async def hitl_approve(response: HITLApprovalResponse):
 
     # Patch the checkpoint with approval state — this modifies the
     # checkpointed state *in place* without restarting the graph.
-    await asyncio.to_thread(
-        graph_app.update_state,
+    graph_app.update_state(
         config,
         {
             "hitl_approved": response.approved,
@@ -185,10 +184,11 @@ async def hitl_approve(response: HITLApprovalResponse):
     )
 
     # Resume graph execution from the interrupt point.
+    # Using ainvoke (async) because generate_response is an async node.
     # Passing None as input tells LangGraph to continue from where it paused
     # (hitl_gate → log_audit → generate_response → END), preserving all
     # accumulated state (query, retrieved_context, rag_results, etc.).
-    result = await asyncio.to_thread(graph_app.invoke, None, config)
+    result = await graph_app.ainvoke(None, config=config)
 
     final_res = result.get("final_response") if isinstance(result, dict) else None
     if not final_res:
