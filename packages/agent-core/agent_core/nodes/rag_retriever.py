@@ -1,5 +1,4 @@
 import os
-import json
 import logging
 from pathlib import Path
 from agent_core.state import WorkbenchState
@@ -26,45 +25,30 @@ def _get_embedder():
     return _embedder_cache
 
 def _local_fixture_search(query: str) -> list[dict]:
-    """Fallback text search directly over test fixture standards files."""
+    """Generic token overlap search over local standard documents."""
     root = Path(__file__).parent.parent.parent.parent.parent
     fixtures_dir = root / "data" / "test-fixtures" / "standards"
     results = []
     
     if fixtures_dir.exists():
-        q_lower = query.lower()
+        q_words = set(query.lower().split())
         for fpath in fixtures_dir.glob("*.md"):
             try:
                 content = fpath.read_text(encoding="utf-8")
-                # Simple relevance scoring based on keyword overlap
-                score = 0.0
-                if "oisd-118" in q_lower or "oisd 118" in q_lower or "layout" in q_lower:
-                    if "oisd_118" in fpath.name.lower():
-                        score += 0.8
-                if "oisd-105" in q_lower or "work permit" in q_lower:
-                    if "oisd_105" in fpath.name.lower():
-                        score += 0.8
-                if "api-520" in q_lower or "api 520" in q_lower or "relief valve" in q_lower:
-                    if "api_520" in fpath.name.lower():
-                        score += 0.8
-                
-                # Check for specific words like "distance", "process unit", "control room"
-                words = ["distance", "process unit", "control room", "fire station", "permit", "isolation"]
-                for w in words:
-                    if w in q_lower and w in content.lower():
-                        score += 0.1
-
-                if score > 0 or "distance" in q_lower:
+                c_words = set(content.lower().split())
+                overlap = len(q_words.intersection(c_words))
+                if overlap > 0:
                     results.append({
                         "content": content[:1500],
                         "source": f"standards/{fpath.name}",
                         "title": fpath.name,
-                        "score": score or 0.5
+                        "score": float(overlap)
                     })
             except Exception as exc:
                 logger.warning(f"Error reading fixture {fpath}: {exc}")
                 
-    return results
+        results.sort(key=lambda x: x["score"], reverse=True)
+    return results[:3]
 
 async def retrieve_standards(state: WorkbenchState) -> dict:
     """Retrieves standard documents from Qdrant and populates retrieved_context & rag_context."""
@@ -100,7 +84,7 @@ async def retrieve_standards(state: WorkbenchState) -> dict:
                 })
         logger.info(f"RAG Retriever: Got {len(retrieved_chunks)} hits from Qdrant collection '{collection}'")
     except Exception as e:
-        logger.warning(f"Qdrant query failed or unavailable ({e}). Falling back to local fixture search.")
+        logger.warning(f"Qdrant query failed or unavailable ({e}). Falling back to local token overlap search.")
         retrieved_chunks = _local_fixture_search(query)
 
     if not retrieved_chunks:
@@ -109,10 +93,10 @@ async def retrieve_standards(state: WorkbenchState) -> dict:
     formatted_context_parts = []
     for chunk in retrieved_chunks:
         formatted_context_parts.append(
-            f"--- Document: {chunk['title']} (Source: {chunk['source']}) ---\n{chunk['content']}"
+            f"Source: {chunk['source']}\n{chunk['content']}"
         )
         
-    retrieved_context_str = "\n\n".join(formatted_context_parts)
+    retrieved_context_str = "\n\n---\n\n".join(formatted_context_parts)
     
     return {
         "rag_results": {

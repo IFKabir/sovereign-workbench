@@ -114,9 +114,9 @@ def log_audit(state: WorkbenchState) -> dict:
 async def generate_response(state: WorkbenchState) -> dict:
     """Generate the final user-facing response using Qwen2.5-VL via vLLM.
 
-    Aggregates context from preceding nodes (P&ID analysis, RAG results,
-    code output) and calls the local vLLM endpoint to synthesise a
-    coherent, grounded answer.
+    Aggregates context from preceding nodes and dynamically formats a generic prompt
+    payload for the local vLLM endpoint. Falls back to listing raw retrieved grounding chunks
+    if LLM inference is offline.
     """
     import httpx
 
@@ -138,7 +138,7 @@ async def generate_response(state: WorkbenchState) -> dict:
 
     vllm_url = os.environ.get("VLLM_BASE_URL", "http://localhost:8000/v1")
 
-    # --- Build context from prior nodes ---------------------------------
+    # --- Build generic context block from prior nodes --------------------
     context_parts: list[str] = []
 
     retrieved_ctx = state.get("retrieved_context") or state.get("rag_context")
@@ -147,36 +147,32 @@ async def generate_response(state: WorkbenchState) -> dict:
     code_out = state.get("code_output")
 
     if retrieved_ctx:
-        context_parts.append(f"Retrieved Standards Context:\n{retrieved_ctx}")
-    elif rag_res:
+        context_parts.append(f"{retrieved_ctx}")
+    elif rag_res and isinstance(rag_res, dict):
         docs = rag_res.get("retrieved_docs") or []
         if docs:
-            context_parts.append("Retrieved Standards Context:\n" + "\n\n".join(docs))
+            context_parts.append("\n\n".join(docs))
+            
     if pid_res:
         context_parts.append(f"P&ID Analysis Results:\n{pid_res}")
     if code_out:
         context_parts.append(f"Code Execution Output:\n{code_out}")
-
     if state.get("compliance_flags"):
-        context_parts.append(
-            f"Compliance Flags: {', '.join(state['compliance_flags'])}"
-        )
+        context_parts.append(f"Compliance Flags: {', '.join(state['compliance_flags'])}")
 
-    context_block = "\n\n---\n\n".join(context_parts) if context_parts else ""
+    formatted_context_chunks = "\n\n---\n\n".join(context_parts) if context_parts else "No specific document context retrieved."
 
-    system_prompt = (
-        "You are the Sovereign AI Workbench assistant deployed at MRPL. "
-        "You operate in a fully air-gapped environment. Provide concise, "
-        "technically accurate responses grounded in the context provided. "
-        "Always cite the relevant standard or data source."
+    system_prompt = "You are an industrial safety AI assistant running on-premise at MRPL."
+    user_prompt = (
+        f"Answer the user query based strictly on the provided context below. Cite the source document if available.\n\n"
+        f"Context:\n{formatted_context_chunks}\n\n"
+        f"User Query: {state.get('query', '')}"
     )
 
     messages = [
         {"role": "system", "content": system_prompt},
+        {"role": "user", "content": user_prompt},
     ]
-    if context_block:
-        messages.append({"role": "assistant", "content": f"[Context]\n{context_block}"})
-    messages.append({"role": "user", "content": state.get("query", "")})
 
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
@@ -211,19 +207,18 @@ async def generate_response(state: WorkbenchState) -> dict:
             }
 
     except Exception as exc:
-        logger.warning(f"vLLM endpoint unavailable ({exc}), performing extractive local synthesis.")
+        logger.warning(f"vLLM endpoint unavailable ({exc}), listing raw retrieved grounding chunks.")
         if context_parts:
             fallback = (
-                "### Sovereign AI Workbench — Compliance Analysis (Extractive Local Synthesis)\n\n"
-                "**Query**: " + state.get("query", "") + "\n\n"
-                "#### Grounded Context & Extracted Findings:\n\n"
-                + "\n\n".join(context_parts)
-                + "\n\n---\n*Citations*: `standards/oisd_118_excerpt.md` | `mrpl_standards` vector index (Air-Gapped Offline Mode)."
+                "### Retrieved Grounding Chunks (LLM Offline)\n\n"
+                f"**User Query**: {state.get('query', '')}\n\n"
+                f"{formatted_context_chunks}"
             )
         else:
             fallback = (
-                "### Sovereign AI Workbench — Air-Gapped Mode\n\n"
-                "Processed technical query. No relevant standard documents or schematic entities were matched in vector search."
+                "### Retrieved Grounding Chunks (LLM Offline)\n\n"
+                f"**User Query**: {state.get('query', '')}\n\n"
+                "No matching document context found in vector storage."
             )
         return {
             "final_response": fallback,

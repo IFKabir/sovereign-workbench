@@ -46,7 +46,7 @@ class TaskRouter:
                 tok_path = tokenizer_dir if os.path.exists(tokenizer_dir) else "answerdotai/ModernBERT-base"
                 self.tokenizer = AutoTokenizer.from_pretrained(tok_path)
 
-                # JIT Warmup (1-2 dummy inference passes)
+                # JIT Warmup
                 self._warmup()
                 logger.info("TaskRouter: ONNX model loaded and JIT pre-warmed successfully.")
             except Exception as e:
@@ -70,11 +70,7 @@ class TaskRouter:
     def predict(self, query: str) -> str:
         q_clean = query.strip().lower().rstrip("!?.")
         
-        # Technical keywords check overrides greeting filter
-        tech_keywords = ['oisd', 'standard', 'api', 'control room', 'distance', 'isolation', 'valve', 'pump', 'calculate', 'permit', 'minimum', 'safe', 'p&id', 'schematic']
-        has_tech_keywords = any(kw in q_clean for kw in tech_keywords)
-
-        if not has_tech_keywords and (q_clean in GREETINGS or any(q_clean.startswith(g + " ") for g in ["hi", "hello", "hey"])):
+        if q_clean in GREETINGS:
             return "GENERAL_CHAT"
 
         if self.session and self.tokenizer:
@@ -96,7 +92,7 @@ class TaskRouter:
         q = query.lower()
         vision_keywords = ['p&id', 'piping', 'diagram', 'schematic', 'symbol', 'drawing', 'instrumentation', 'valve', 'pump', 'flowsheet', 'isometric']
         code_keywords = ['calculate', 'compute', 'python', 'script', 'formula', 'equation', 'simulate', 'model', 'optimize', 'blend']
-        rag_keywords = ['standard', 'oisd', 'pngrb', 'regulation', 'compliance', 'safety', 'permit', 'procedure', 'specification', 'is code', 'api standard']
+        rag_keywords = ['standard', 'oisd', 'pngrb', 'regulation', 'compliance', 'safety', 'permit', 'procedure', 'specification', 'is code', 'api standard', 'grounding', 'electrical']
 
         if any(kw in q for kw in vision_keywords):
             return "VISION_SCHEMATIC"
