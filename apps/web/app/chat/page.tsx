@@ -91,7 +91,7 @@ export default function ChatPage() {
             if (rawData === '{"event_type": "done"}' || rawData === '[DONE]') {
               break;
             }
-            try:
+            try {
               const parsed = JSON.parse(rawData);
 
               if (parsed.event_type === 'hitl_required' && parsed.requires_approval) {
