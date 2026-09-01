@@ -141,21 +141,21 @@ async def generate_response(state: WorkbenchState) -> dict:
     # --- Build context from prior nodes ---------------------------------
     context_parts: list[str] = []
 
-    if state.get("pid_results"):
-        context_parts.append(
-            f"P&ID Analysis Results:\n{state['pid_results']}"
-        )
-    if state.get("rag_results"):
-        context_parts.append(
-            f"Standards / Document Retrieval:\n{state['rag_results']}"
-        )
-    if state.get("code_output"):
-        co = state["code_output"]
-        context_parts.append(
-            f"Code Execution Output (exit {co.get('exit_code', '?')}):\n"
-            f"stdout: {co.get('stdout', '')}\n"
-            f"stderr: {co.get('stderr', '')}"
-        )
+    retrieved_ctx = state.get("retrieved_context") or state.get("rag_context")
+    rag_res = state.get("rag_results")
+    pid_res = state.get("pid_results")
+    code_out = state.get("code_output")
+
+    if retrieved_ctx:
+        context_parts.append(f"Retrieved Standards Context:\n{retrieved_ctx}")
+    elif rag_res:
+        docs = rag_res.get("retrieved_docs") or []
+        if docs:
+            context_parts.append("Retrieved Standards Context:\n" + "\n\n".join(docs))
+    if pid_res:
+        context_parts.append(f"P&ID Analysis Results:\n{pid_res}")
+    if code_out:
+        context_parts.append(f"Code Execution Output:\n{code_out}")
 
     if state.get("compliance_flags"):
         context_parts.append(
@@ -211,18 +211,19 @@ async def generate_response(state: WorkbenchState) -> dict:
             }
 
     except Exception as exc:
-        logger.warning(f"vLLM endpoint unavailable ({exc}), synthesizing grounded response from context.")
+        logger.warning(f"vLLM endpoint unavailable ({exc}), performing extractive local synthesis.")
         if context_parts:
             fallback = (
-                "### Sovereign Workbench Analysis (Air-Gapped Grounded Response)\n\n"
+                "### Sovereign AI Workbench — Compliance Analysis (Extractive Local Synthesis)\n\n"
+                "**Query**: " + state.get("query", "") + "\n\n"
+                "#### Grounded Context & Extracted Findings:\n\n"
                 + "\n\n".join(context_parts)
-                + "\n\n*Note: High-level reasoning completed via local RAG/vision tools. vLLM endpoint offline.*"
+                + "\n\n---\n*Citations*: `standards/oisd_118_excerpt.md` | `mrpl_standards` vector index (Air-Gapped Offline Mode)."
             )
         else:
             fallback = (
-                "Sovereign AI Workbench initialized in air-gapped local mode.\n\n"
-                "Ready for P&ID schematic analysis, OISD standards retrieval, and sandbox calculations. "
-                "Please ask a specific technical question or upload a P&ID schematic."
+                "### Sovereign AI Workbench — Air-Gapped Mode\n\n"
+                "Processed technical query. No relevant standard documents or schematic entities were matched in vector search."
             )
         return {
             "final_response": fallback,

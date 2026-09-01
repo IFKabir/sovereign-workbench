@@ -69,7 +69,12 @@ class TaskRouter:
 
     def predict(self, query: str) -> str:
         q_clean = query.strip().lower().rstrip("!?.")
-        if q_clean in GREETINGS or any(q_clean.startswith(g + " ") for g in ["hi", "hello", "hey"]):
+        
+        # Technical keywords check overrides greeting filter
+        tech_keywords = ['oisd', 'standard', 'api', 'control room', 'distance', 'isolation', 'valve', 'pump', 'calculate', 'permit', 'minimum', 'safe', 'p&id', 'schematic']
+        has_tech_keywords = any(kw in q_clean for kw in tech_keywords)
+
+        if not has_tech_keywords and (q_clean in GREETINGS or any(q_clean.startswith(g + " ") for g in ["hi", "hello", "hey"])):
             return "GENERAL_CHAT"
 
         if self.session and self.tokenizer:
@@ -81,7 +86,7 @@ class TaskRouter:
                 })
                 import numpy as np
                 predicted_id = int(np.argmax(outputs[0], axis=-1)[0])
-                return self.id2label.get(predicted_id, "DOC_REASONING")
+                return self.id2label.get(predicted_id, "RAG_STANDARDS")
             except Exception as e:
                 logger.error(f"ONNX classification error ({e}), falling back to keywords.")
 
