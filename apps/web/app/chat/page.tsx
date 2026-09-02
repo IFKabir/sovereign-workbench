@@ -69,6 +69,30 @@ function preprocessLatex(content: string): string {
   return text;
 }
 
+function sanitizeMessageContent(content: string, hasParsedMetrics: boolean): string {
+  if (!content) return "";
+
+  // If metrics were successfully parsed into grid cards, strip raw PRIMARY_METRIC lines
+  let cleaned = content
+    .split("\n")
+    .filter((line) => !line.trim().startsWith("PRIMARY_METRIC:") && !line.trim().startsWith("RESULT_VALUE:"))
+    .join("\n")
+    .trim();
+
+  // If the entire message only consisted of PRIMARY_METRIC lines and execution headers,
+  // suppress redundant plain-text output completely
+  if (
+    hasParsedMetrics &&
+    (cleaned === "" ||
+      cleaned.startsWith("Execution Output (exit code 0):") ||
+      cleaned.startsWith("--- Detailed Engineering Output ---"))
+  ) {
+    return "";
+  }
+
+  return cleaned;
+}
+
 export default function ChatPage() {
   const searchParams = useSearchParams();
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -470,13 +494,22 @@ export default function ChatPage() {
                     </div>
                   )}
 
-                  {msg.role === 'assistant' ? (
-                    <div className="prose prose-invert prose-sm max-w-none prose-p:my-1 prose-headings:my-2 prose-ul:my-1 prose-li:my-0.5 prose-code:text-[#8fb03e] prose-code:bg-[#57692c]/20 prose-code:px-1.5 prose-code:py-0.5 prose-pre:bg-[#121212] prose-pre:border prose-pre:border-[#8fb03e]">
-                      <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>
-                        {preprocessLatex(msg.content)}
-                      </ReactMarkdown>
-                    </div>
-                  ) : (
+                  {msg.role === 'assistant' ? (() => {
+                    const hasMetrics = Boolean(
+                      msg.codeData ||
+                      msg.content.includes('PRIMARY_METRIC:') ||
+                      msg.content.includes('RESULT_VALUE:')
+                    );
+                    const sanitizedText = sanitizeMessageContent(msg.content, hasMetrics);
+                    if (!sanitizedText) return null;
+                    return (
+                      <div className="prose prose-invert prose-sm max-w-none prose-p:my-1 prose-headings:my-2 prose-ul:my-1 prose-li:my-0.5 prose-code:text-[#8fb03e] prose-code:bg-[#57692c]/20 prose-code:px-1.5 prose-code:py-0.5 prose-pre:bg-[#121212] prose-pre:border prose-pre:border-[#8fb03e] mb-3">
+                        <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>
+                          {preprocessLatex(sanitizedText)}
+                        </ReactMarkdown>
+                      </div>
+                    );
+                  })() : (
                     msg.content
                   )}
 

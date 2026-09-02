@@ -49,16 +49,26 @@ fi
 
 # 2. Launch Local GPU LLM Engine (Port 8002)
 echo -e "\n${GREEN}[2/5] Launching GPU LLM Inference Engine (Qwen2.5 on Port 8002)...${NC}"
-PORT=8002 python -m uvicorn apps.vllm_service:app --host 0.0.0.0 --port 8002 &
+mkdir -p logs
+PORT=8002 python -m uvicorn apps.vllm_service:app --host 0.0.0.0 --port 8002 > logs/vllm_service.log 2>&1 &
 LLM_PID=$!
+
+# Wait for port 8002 to become active
+echo -e "${YELLOW}[*] Awaiting LLM engine readiness on :8002...${NC}"
+for i in {1..30}; do
+  if curl -s http://localhost:8002/health > /dev/null 2>&1 || curl -s http://localhost:8002/v1/models > /dev/null 2>&1; then
+    echo -e "${GREEN}[✓] Local LLM engine active on port 8002.${NC}"
+    break
+  fi
+  sleep 1
+done
 
 # 3. Launch YOLOv11s Vision Microservice (Port 8001)
 echo -e "\n${GREEN}[3/5] Launching YOLOv11s P&ID Detection Service (Port 8001)...${NC}"
 python -m uvicorn apps.yolo_service:app --host 0.0.0.0 --port 8001 &
 YOLO_PID=$!
 
-# Sleep to allow inference subservices to load models and bind ports
-sleep 5
+sleep 2
 
 # 4. Launch Main API Orchestrator (Port 8080)
 echo -e "\n${GREEN}[4/5] Launching FastAPI Agent Orchestrator (Port 8080)...${NC}"

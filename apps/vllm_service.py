@@ -60,6 +60,10 @@ except Exception as e:
         device_map="auto" if torch.cuda.is_available() else None
     )
 
+@app.get("/health")
+async def health():
+    return {"status": "healthy", "service": "Local GPU LLM Engine", "port": 8002}
+
 @app.get("/v1/models")
 async def list_models():
     return {
