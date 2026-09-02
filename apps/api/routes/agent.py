@@ -246,7 +246,7 @@ async def detect_schematic_symbols(
                 files = {"file": (file.filename, contents, file.content_type or "image/png")}
                 resp = await client.post(f"{yolo_url}/detect", files=files)
             elif preset:
-                root = Path(__file__).parent.parent.parent.parent.parent
+                root = Path(__file__).resolve().parents[3]
                 if preset == "PUMP_ISOLATION":
                     img_path = root / "apps" / "web" / "public" / "schematics" / "pump_manifold_system.png"
                 else:
