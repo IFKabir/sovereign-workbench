@@ -1,6 +1,5 @@
 import './globals.css';
 import { Inter } from 'next/font/google';
-import GIGWHeader from '@/components/GIGWHeader';
 import SidebarNav from '@/components/SidebarNav';
 import ScrollToTop from '@/components/ScrollToTop';
 import AuthGuard from '@/components/AuthGuard';
@@ -19,13 +18,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="dark">
-      <body className={`${inter.className} bg-[#1a1a1a] text-[#e8e8e8] min-h-screen flex flex-col`}>
+      <body className={`${inter.className} bg-[#1a1a1a] text-[#e8e8e8] min-h-screen flex`}>
         <AuthGuard>
-          {/* Top Accessibility Bar + Official MRPL Header + Olive Green Nav + Notice Ticker */}
-          <GIGWHeader />
-
-          {/* Body Layout: Sidebar + Main Workspace */}
-          <div className="flex-1 flex overflow-hidden">
+          {/* Main Layout: Sidebar + Full Workspace */}
+          <div className="w-full h-screen flex overflow-hidden">
             <SidebarNav />
             <main id="main-content" className="flex-1 industrial-grid relative overflow-y-auto bg-[#1a1a1a]">
               {children}
