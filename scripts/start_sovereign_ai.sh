@@ -35,11 +35,15 @@ pkill -f "uvicorn apps.api.main:app" 2>/dev/null || true
 # Trap process exit to cleanly terminate all background child processes
 trap 'echo -e "\n${RED}Shutting down all Sovereign AI microservices...${NC}"; kill 0' EXIT SIGINT SIGTERM
 
-# 1. Start / Verify Qdrant Vector DB
-echo -e "\n${GREEN}[1/5] Checking Qdrant Vector Database (Port 6333)...${NC}"
+# 1. Start / Verify Qdrant Vector DB & Sovereign Sandbox Container Image
+echo -e "\n${GREEN}[1/5] Checking Qdrant Vector Database & Docker Sandbox Image...${NC}"
 if command -v docker >/dev/null 2>&1; then
     if ! docker ps --format '{{.Names}}' | grep -q "^sovereign-qdrant$"; then
         docker start sovereign-qdrant 2>/dev/null || docker run -d --name sovereign-qdrant -p 6333:6333 qdrant/qdrant:latest 2>/dev/null || true
+    fi
+    if ! docker image inspect sovereign-sandbox:latest >/dev/null 2>&1; then
+        echo -e "${YELLOW}Building sovereign-sandbox:latest Docker container image...${NC}"
+        docker build -t sovereign-sandbox:latest -f infra/docker/Dockerfile.sandbox infra/docker
     fi
 fi
 
@@ -53,8 +57,8 @@ echo -e "\n${GREEN}[3/5] Launching YOLOv11s P&ID Detection Service (Port 8001)..
 python -m uvicorn apps.yolo_service:app --host 0.0.0.0 --port 8001 &
 YOLO_PID=$!
 
-# Sleep briefly to allow subservices to bind
-sleep 3
+# Sleep to allow inference subservices to load models and bind ports
+sleep 5
 
 # 4. Launch Main API Orchestrator (Port 8080)
 echo -e "\n${GREEN}[4/5] Launching FastAPI Agent Orchestrator (Port 8080)...${NC}"

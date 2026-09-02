@@ -9,11 +9,8 @@ RUN apt-get update && \
     apt-get autoremove -y && \
     rm -rf /var/lib/apt/lists/*
 
-# Non-root user (sandbox-user, UID 65534)
-RUN useradd -m -u 65534 sandbox-user
+# Non-root user (sandbox-user, UID 10001)
+RUN useradd -m -u 10001 sandbox-user
 USER sandbox-user
 
-# Read-only considerations can be handled at runtime via docker/k8s (read_only: true, tmpfs)
-# or via specific volume mounts
-
-ENTRYPOINT ["python"]
+CMD ["python3"]

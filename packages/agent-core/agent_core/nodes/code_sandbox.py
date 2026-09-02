@@ -312,6 +312,8 @@ class SecureSandbox:
             tf.write(code)
             temp_path = tf.name
 
+        os.chmod(temp_path, 0o644)
+
         start_time = time.time()
         container = None
 

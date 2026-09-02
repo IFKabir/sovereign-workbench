@@ -17,10 +17,10 @@ GGUF_PATH = os.getenv("GGUF_MODEL_PATH", "infra/models/qwen2.5-vl-7b-instruct-q4
 
 logger.info(f"Loading 7B LLM engine weights from '{MODEL_ID}'...")
 
-# Try 4-bit BitsAndBytes quantization if CUDA GPU is available
 quantization_config = None
 if torch.cuda.is_available():
     try:
+        import bitsandbytes
         from transformers import BitsAndBytesConfig
         quantization_config = BitsAndBytesConfig(
             load_in_4bit=True,
@@ -33,18 +33,32 @@ if torch.cuda.is_available():
 
 try:
     tokenizer = AutoTokenizer.from_pretrained(MODEL_ID, trust_remote_code=True)
-    model = AutoModelForCausalLM.from_pretrained(
-        MODEL_ID,
-        torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32,
-        device_map="auto" if torch.cuda.is_available() else None,
-        quantization_config=quantization_config if torch.cuda.is_available() else None,
-        trust_remote_code=True
-    )
+    try:
+        model = AutoModelForCausalLM.from_pretrained(
+            MODEL_ID,
+            torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32,
+            device_map="auto" if torch.cuda.is_available() else None,
+            quantization_config=quantization_config if (torch.cuda.is_available() and quantization_config) else None,
+            trust_remote_code=True
+        )
+    except Exception as e_quant:
+        logger.warning(f"Quantized model load failed ({e_quant}), attempting unquantized load for '{MODEL_ID}'...")
+        model = AutoModelForCausalLM.from_pretrained(
+            MODEL_ID,
+            torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32,
+            device_map="auto" if torch.cuda.is_available() else None,
+            trust_remote_code=True
+        )
     logger.info(f"7B LLM engine '{MODEL_ID}' loaded successfully!")
 except Exception as e:
     logger.warning(f"Primary model load failed ({e}). Initializing fallback tokenizer/model.")
-    tokenizer = AutoTokenizer.from_pretrained("Qwen/Qwen2.5-0.5B-Instruct")
-    model = AutoModelForCausalLM.from_pretrained("Qwen/Qwen2.5-0.5B-Instruct")
+    fallback_id = "Qwen/Qwen2.5-0.5B-Instruct"
+    tokenizer = AutoTokenizer.from_pretrained(fallback_id)
+    model = AutoModelForCausalLM.from_pretrained(
+        fallback_id,
+        torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32,
+        device_map="auto" if torch.cuda.is_available() else None
+    )
 
 @app.get("/v1/models")
 async def list_models():
@@ -71,7 +85,7 @@ async def chat_completions(request: Request):
         return JSONResponse(status_code=400, content={"error": "No messages provided"})
 
     formatted_text = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
-    device = "cuda" if torch.cuda.is_available() else "cpu"
+    device = getattr(model, "device", "cuda" if torch.cuda.is_available() else "cpu")
     inputs = tokenizer([formatted_text], return_tensors="pt").to(device)
 
     with torch.no_grad():
