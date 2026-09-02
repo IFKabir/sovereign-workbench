@@ -2,40 +2,26 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Clock, MapPin, User, ChevronDown, Shield, LogOut } from 'lucide-react';
+import { User, ChevronDown, Shield, LogOut } from 'lucide-react';
 import {
   getSession,
-  updateSession,
   logoutSession,
-  getCurrentShift,
   getRoleInfo,
-  PLANT_UNITS,
   type MRPLSession,
-  type PlantUnitId,
 } from '@/lib/session';
 
 export default function HeaderBar() {
   const router = useRouter();
   const [session, setSession] = useState<MRPLSession | null>(null);
-  const [shift, setShift] = useState(getCurrentShift());
-  const [showUnitDropdown, setShowUnitDropdown] = useState(false);
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
 
   useEffect(() => {
     setSession(getSession());
-    const interval = setInterval(() => setShift(getCurrentShift()), 60000);
-    return () => clearInterval(interval);
   }, []);
 
   if (!session) return null;
 
   const roleInfo = getRoleInfo(session.role);
-
-  const handleUnitChange = (unitId: PlantUnitId) => {
-    const updated = updateSession({ plantUnit: unitId });
-    if (updated) setSession(updated);
-    setShowUnitDropdown(false);
-  };
 
   const handleSignOut = () => {
     logoutSession();
@@ -44,51 +30,9 @@ export default function HeaderBar() {
 
   return (
     <div className="h-14 border-b border-sovereign-border bg-sovereign-surface/60 backdrop-blur-sm flex items-center justify-between px-6 shrink-0 z-30">
-      {/* Left: Plant Unit */}
-      <div className="flex items-center space-x-6">
-        <div className="relative">
-          <button
-            onClick={() => {
-              setShowUnitDropdown(!showUnitDropdown);
-              setShowProfileDropdown(false);
-            }}
-            className="flex items-center space-x-2 text-sm text-gray-300 hover:text-white transition-colors px-3 py-1.5 rounded-lg hover:bg-sovereign-surface border border-transparent hover:border-sovereign-border"
-          >
-            <MapPin className="w-4 h-4 text-accent-cyan" />
-            <span className="font-medium">{session.plantUnit}</span>
-            <ChevronDown className="w-3.5 h-3.5 text-gray-500" />
-          </button>
-          {showUnitDropdown && (
-            <div className="absolute top-full left-0 mt-1 w-72 glass-panel border border-sovereign-border rounded-lg shadow-xl z-50 py-1">
-              <p className="px-3 py-2 text-xs text-gray-500 uppercase tracking-wider font-semibold border-b border-sovereign-border">
-                Active Plant Unit
-              </p>
-              {PLANT_UNITS.map((unit) => (
-                <button
-                  key={unit.id}
-                  onClick={() => handleUnitChange(unit.id)}
-                  className={`w-full text-left px-3 py-2 text-sm transition-colors ${
-                    session.plantUnit === unit.id
-                      ? 'bg-accent-cyan/10 text-accent-cyan'
-                      : 'text-gray-300 hover:bg-sovereign-surface hover:text-white'
-                  }`}
-                >
-                  {unit.label}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Shift Indicator */}
-        <div className="flex items-center space-x-2 text-sm">
-          <Clock className="w-4 h-4 text-accent-amber" />
-          <span className="text-gray-400">{shift.label}:</span>
-          <span className="text-gray-200 font-mono text-xs">{shift.timeRange}</span>
-        </div>
-
-        {/* Air-Gap Security Badge */}
-        <div className="hidden xl:flex items-center space-x-2 px-3 py-1 rounded-full border border-accent-emerald/20 bg-accent-emerald/5">
+      {/* Left: Air-Gap Security Badge */}
+      <div className="flex items-center space-x-3">
+        <div className="flex items-center space-x-2 px-3 py-1 rounded-full border border-accent-emerald/20 bg-accent-emerald/5">
           <span className="w-2 h-2 rounded-full bg-accent-emerald animate-pulse" />
           <span className="text-xs text-accent-emerald font-medium">Zero WAN Egress | Air-Gapped Intranet Node</span>
         </div>
@@ -97,10 +41,7 @@ export default function HeaderBar() {
       {/* Right: Authenticated User Profile */}
       <div className="relative flex items-center space-x-3">
         <button
-          onClick={() => {
-            setShowProfileDropdown(!showProfileDropdown);
-            setShowUnitDropdown(false);
-          }}
+          onClick={() => setShowProfileDropdown(!showProfileDropdown)}
           className="flex items-center space-x-3 text-sm text-gray-300 hover:text-white transition-colors px-3 py-1.5 rounded-lg hover:bg-sovereign-surface border border-transparent hover:border-sovereign-border"
         >
           <div className="flex items-center space-x-2">
