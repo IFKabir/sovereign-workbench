@@ -71,27 +71,26 @@ function generateEmployeeId(): string {
 // Session API
 // ---------------------------------------------------------------------------
 
-export function initSession(): MRPLSession {
-  if (typeof window === 'undefined') {
-    return {
-      userId: 'EMP-00000',
-      userName: 'System',
-      plantUnit: 'CDU-2',
-      role: 'OPERATOR',
-      sessionId: 'server-render',
-    };
-  }
+export function isLoggedIn(): boolean {
+  if (typeof window === 'undefined') return false;
+  return !!localStorage.getItem(KEYS.userId);
+}
 
-  const existing = localStorage.getItem(KEYS.userId);
-  if (existing) {
-    return getSession();
+export function loginSession(params: {
+  userId: string;
+  userName: string;
+  plantUnit: PlantUnitId;
+  role: RoleId;
+}): MRPLSession {
+  if (typeof window === 'undefined') {
+    throw new Error('loginSession can only be called in browser environment');
   }
 
   const session: MRPLSession = {
-    userId: generateEmployeeId(),
-    userName: 'Operator',
-    plantUnit: 'CDU-2',
-    role: 'OPERATOR',
+    userId: params.userId,
+    userName: params.userName,
+    plantUnit: params.plantUnit,
+    role: params.role,
     sessionId: crypto.randomUUID(),
   };
 
@@ -100,23 +99,28 @@ export function initSession(): MRPLSession {
   localStorage.setItem(KEYS.plantUnit, session.plantUnit);
   localStorage.setItem(KEYS.role, session.role);
   localStorage.setItem(KEYS.sessionId, session.sessionId);
+  localStorage.setItem('mrpl_logged_in_at', new Date().toISOString());
 
   return session;
 }
 
-export function getSession(): MRPLSession {
-  if (typeof window === 'undefined') {
-    return {
-      userId: 'EMP-00000',
-      userName: 'System',
-      plantUnit: 'CDU-2',
-      role: 'OPERATOR',
-      sessionId: 'server-render',
-    };
-  }
+export function logoutSession(): void {
+  if (typeof window === 'undefined') return;
+  localStorage.removeItem(KEYS.userId);
+  localStorage.removeItem(KEYS.userName);
+  localStorage.removeItem(KEYS.plantUnit);
+  localStorage.removeItem(KEYS.role);
+  localStorage.removeItem(KEYS.sessionId);
+  localStorage.removeItem('mrpl_logged_in_at');
+}
+
+export function getSession(): MRPLSession | null {
+  if (typeof window === 'undefined') return null;
+  const userId = localStorage.getItem(KEYS.userId);
+  if (!userId) return null;
 
   return {
-    userId: localStorage.getItem(KEYS.userId) || generateEmployeeId(),
+    userId,
     userName: localStorage.getItem(KEYS.userName) || 'Operator',
     plantUnit: (localStorage.getItem(KEYS.plantUnit) as PlantUnitId) || 'CDU-2',
     role: (localStorage.getItem(KEYS.role) as RoleId) || 'OPERATOR',
@@ -124,8 +128,9 @@ export function getSession(): MRPLSession {
   };
 }
 
-export function updateSession(updates: Partial<MRPLSession>): MRPLSession {
+export function updateSession(updates: Partial<MRPLSession>): MRPLSession | null {
   const current = getSession();
+  if (!current) return null;
   const updated = { ...current, ...updates };
 
   if (updates.userId) localStorage.setItem(KEYS.userId, updated.userId);
@@ -139,6 +144,7 @@ export function updateSession(updates: Partial<MRPLSession>): MRPLSession {
 
 export function getApiHeaders(): Record<string, string> {
   const s = getSession();
+  if (!s) return {};
   return {
     'X-User-Id': s.userId,
     'X-User-Role': s.role,

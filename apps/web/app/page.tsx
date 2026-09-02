@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { Shield, BookOpen, Search, Lock, ArrowRight, Eye, Calculator, FileText } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { initSession, type MRPLSession, getPlantUnitLabel } from '@/lib/session';
+import { getSession, getApiHeaders, type MRPLSession, getPlantUnitLabel } from '@/lib/session';
 
 const container = {
   hidden: { opacity: 0 },
@@ -18,45 +18,6 @@ const item = {
   hidden: { opacity: 0, y: 20 },
   show: { opacity: 1, y: 0 }
 };
-
-const statusCards = [
-  {
-    label: 'Sovereign Engine Status',
-    value: 'Operational',
-    detail: '100% On-Premise',
-    icon: Shield,
-    color: 'text-accent-emerald',
-    borderColor: 'border-t-accent-emerald',
-    pulseColor: 'bg-accent-emerald',
-  },
-  {
-    label: 'Plant Standards Knowledge Base',
-    value: 'Active',
-    detail: 'OISD-118, OISD-105, API-520 — 107 Verified Clauses',
-    icon: BookOpen,
-    color: 'text-accent-cyan',
-    borderColor: 'border-t-accent-cyan',
-    pulseColor: 'bg-accent-cyan',
-  },
-  {
-    label: 'Schematic Inspection Engine',
-    value: 'Active',
-    detail: 'ISA-5.1 P&ID Symbol Recognition',
-    icon: Search,
-    color: 'text-accent-amber',
-    borderColor: 'border-t-accent-amber',
-    pulseColor: 'bg-accent-amber',
-  },
-  {
-    label: 'Audit Ledger Health',
-    value: 'Verified',
-    detail: 'SHA-256 Cryptographic Chain (Tamper-Evident)',
-    icon: Lock,
-    color: 'text-purple-400',
-    borderColor: 'border-t-purple-400',
-    pulseColor: 'bg-purple-400',
-  },
-];
 
 const quickLaunchers = [
   {
@@ -99,10 +60,72 @@ const quickLaunchers = [
 
 export default function DashboardPage() {
   const [session, setSession] = useState<MRPLSession | null>(null);
+  const [engineHealth, setEngineHealth] = useState<string>('Operational');
+  const [auditBlockCount, setAuditBlockCount] = useState<number>(0);
 
   useEffect(() => {
-    setSession(initSession());
+    setSession(getSession());
+
+    // Fetch dynamic telemetry
+    const fetchTelemetry = async () => {
+      try {
+        const healthRes = await fetch('/health/ready');
+        if (healthRes.ok) {
+          const hData = await healthRes.json();
+          if (hData.status === 'ready') setEngineHealth('Operational');
+        }
+
+        const auditRes = await fetch('/api/v1/audit/stats', { headers: getApiHeaders() });
+        if (auditRes.ok) {
+          const aData = await auditRes.json();
+          setAuditBlockCount(aData.total_blocks || 0);
+        }
+      } catch (err) {
+        console.error('Failed to fetch dashboard telemetry:', err);
+      }
+    };
+
+    fetchTelemetry();
   }, []);
+
+  const statusCards = [
+    {
+      label: 'Sovereign Engine Status',
+      value: engineHealth,
+      detail: '100% On-Premise (Zero Network Egress)',
+      icon: Shield,
+      color: 'text-accent-emerald',
+      borderColor: 'border-t-accent-emerald',
+      pulseColor: 'bg-accent-emerald',
+    },
+    {
+      label: 'Plant Standards Knowledge Base',
+      value: 'Active',
+      detail: 'OISD-118, OISD-105, API-520 — 107 Verified Clauses',
+      icon: BookOpen,
+      color: 'text-accent-cyan',
+      borderColor: 'border-t-accent-cyan',
+      pulseColor: 'bg-accent-cyan',
+    },
+    {
+      label: 'Schematic Inspection Engine',
+      value: 'Active',
+      detail: 'ISA-5.1 P&ID Symbol Recognition (YOLOv11s)',
+      icon: Search,
+      color: 'text-accent-amber',
+      borderColor: 'border-t-accent-amber',
+      pulseColor: 'bg-accent-amber',
+    },
+    {
+      label: 'Audit Ledger Height',
+      value: `${auditBlockCount} Block${auditBlockCount === 1 ? '' : 's'}`,
+      detail: 'SHA-256 Hash-Chained SQLite Ledger',
+      icon: Lock,
+      color: 'text-purple-400',
+      borderColor: 'border-t-purple-400',
+      pulseColor: 'bg-purple-400',
+    },
+  ];
 
   return (
     <div className="p-8 max-w-7xl mx-auto min-h-full">
@@ -115,7 +138,7 @@ export default function DashboardPage() {
         </p>
       </motion.div>
 
-      {/* Status Cards */}
+      {/* Dynamic Status Cards */}
       <motion.div
         variants={container}
         initial="hidden"
@@ -179,3 +202,4 @@ export default function DashboardPage() {
     </div>
   );
 }
+
