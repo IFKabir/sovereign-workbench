@@ -32,7 +32,10 @@ class Settings(BaseSettings):
     audit_db_path: str = './data/audit_ledger.db'
     
     # Server
-    cors_origin: str = 'http://localhost:3000'
+    cors_origins: list[str] = [
+        'http://localhost:3000',
+        'http://127.0.0.1:3000',
+    ]
     api_host: str = '0.0.0.0'
     api_port: int = 8080
     log_level: str = 'info'

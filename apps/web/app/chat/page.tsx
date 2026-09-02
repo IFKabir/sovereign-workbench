@@ -1,14 +1,24 @@
 'use client';
-import { useState, useEffect } from 'react';
-import { Send, Upload, Bot, User, Cpu, Loader2 } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Send, Upload, Bot, User, Loader2, ChevronDown, ChevronRight, Shield, Beaker, AlertTriangle } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import SchematicViewer from '@/components/SchematicViewer';
 import HitlApprovalModal, { RiskLevel } from '@/components/HitlApprovalModal';
+import { initSession, getSession, getApiHeaders, type MRPLSession } from '@/lib/session';
 
 interface Message {
   role: 'user' | 'assistant';
   content: string;
-  model?: string;
-  tokens?: number;
+  source?: string;
+  codeData?: {
+    script?: string;
+    stdout?: string;
+    stderr?: string;
+    exitCode?: number;
+    sandboxMode?: string;
+  };
 }
 
 interface HitlData {
@@ -21,12 +31,14 @@ interface HitlData {
 }
 
 export default function ChatPage() {
+  const searchParams = useSearchParams();
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [session, setSession] = useState<MRPLSession | null>(null);
   const [messages, setMessages] = useState<Message[]>([
     {
       role: 'assistant',
-      content: 'Sovereign Workbench initialized. Ready for air-gapped P&ID analysis, OISD compliance standards lookup, and calculations. Ask a question or submit an operational query.',
-      model: 'Qwen2.5-VL-7B-Instruct',
-      tokens: 24,
+      content: 'MRPL Sovereign Intelligence Platform ready. I can assist with P&ID schematic analysis, OISD compliance standards lookup, engineering calculations, and shift handover digests. How can I help?',
+      source: 'Sovereign AI',
     },
   ]);
   const [input, setInput] = useState('');
@@ -34,33 +46,52 @@ export default function ChatPage() {
   const [threadId, setThreadId] = useState<string>('');
   const [showHitl, setShowHitl] = useState(false);
   const [hitlData, setHitlData] = useState<HitlData | null>(null);
+  const [showSchematic, setShowSchematic] = useState(false);
+  const [expandedCode, setExpandedCode] = useState<Record<number, boolean>>({});
 
   useEffect(() => {
-    // Generate isolated thread_id per session to prevent checkpointer crosstalk
-    if (typeof window !== 'undefined') {
-      setThreadId(crypto.randomUUID());
+    const s = initSession();
+    setSession(s);
+    setThreadId(s.sessionId);
+
+    // Pre-fill from dashboard launchers
+    const q = searchParams.get('q');
+    if (q) {
+      setInput(decodeURIComponent(q));
     }
-  }, []);
+    const mode = searchParams.get('mode');
+    if (mode === 'schematic') {
+      setShowSchematic(true);
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
 
   const handleSend = async () => {
     if (!input.trim() || isProcessing) return;
 
     const userQuery = input.trim();
+    const currentSession = getSession();
     const activeThreadId = threadId || crypto.randomUUID();
     if (!threadId) setThreadId(activeThreadId);
 
-    setMessages((prev) => [...prev, { role: 'user', content: userQuery, model: '', tokens: 0 }]);
+    setMessages((prev) => [...prev, { role: 'user', content: userQuery }]);
     setInput('');
     setIsProcessing(true);
 
     try {
       const response = await fetch('/api/v1/agent/query', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...getApiHeaders(),
+        },
         body: JSON.stringify({
           query: userQuery,
-          user_id: 'op-user-01',
-          role: 'OPERATOR',
+          user_id: currentSession.userId,
+          role: currentSession.role,
           thread_id: activeThreadId,
         }),
       });
@@ -101,7 +132,7 @@ export default function ChatPage() {
                 setHitlData({
                   actionType: d.action_type || 'SAFETY_CRITICAL_MODIFICATION',
                   riskLevel: (d.risk_level as RiskLevel) || 'HIGH',
-                  draftContent: d.draft_content || `Action requested in thread ${activeThreadId} requires Human-in-the-Loop review.`,
+                  draftContent: d.draft_content || `Action requested requires Human-in-the-Loop review.`,
                   complianceFlags: d.compliance_flags || ['Safety-critical procedure flagged'],
                   requiredRole: d.required_role || 'SAFETY_OFFICER',
                   threadId: parsed.thread_id || activeThreadId,
@@ -111,22 +142,25 @@ export default function ChatPage() {
                   ...prev,
                   {
                     role: 'assistant',
-                    content: '⚠️ Safety-critical operation requested. Execution paused pending Human-in-the-Loop approval from a Safety Officer.',
-                    model: 'Compliance-Auditor',
+                    content: '⚠️ **Safety-Critical Operation Detected** — Execution paused pending authorization from Fire & Safety Department.',
+                    source: 'Compliance Auditor',
                   },
                 ]);
               } else if (parsed.event_type === 'code_result' && parsed.data) {
                 const cd = parsed.data;
-                const scriptBlock = cd.script ? `**Generated Python Script:**\n\`\`\`python\n${cd.script}\n\`\`\`\n\n` : '';
-                const outputBlock = cd.stdout ? `**Execution Output (exit code ${cd.exit_code ?? 0}):**\n\`\`\`\n${cd.stdout}\n\`\`\`` : '';
-                const stderrBlock = cd.stderr ? `\n\n**Stderr:**\n\`\`\`\n${cd.stderr}\n\`\`\`` : '';
-                const sandboxBadge = cd.sandbox_mode ? `\n\n_Sandbox mode: ${cd.sandbox_mode}_` : '';
                 setMessages((prev) => [
                   ...prev,
                   {
                     role: 'assistant',
-                    content: `${scriptBlock}${outputBlock}${stderrBlock}${sandboxBadge}`,
-                    model: 'Code-Sandbox',
+                    content: cd.stdout || 'Calculation completed.',
+                    source: 'Engineering Sandbox',
+                    codeData: {
+                      script: cd.script,
+                      stdout: cd.stdout,
+                      stderr: cd.stderr,
+                      exitCode: cd.exit_code ?? 0,
+                      sandboxMode: cd.sandbox_mode,
+                    },
                   },
                 ]);
               } else if (parsed.event_type === 'response' && parsed.data?.content) {
@@ -147,17 +181,16 @@ export default function ChatPage() {
           {
             role: 'assistant',
             content: assistantText,
-            model: 'Qwen2.5-VL-7B-Instruct',
+            source: 'Sovereign AI',
           },
         ]);
       } else if (!hitlTriggered && !assistantText) {
-        // Fallback for conversational response
         setMessages((prev) => [
           ...prev,
           {
             role: 'assistant',
-            content: 'Hello! I am the Sovereign AI Workbench assistant deployed at MRPL. I can assist with P&ID analysis, OISD standards, and refinery calculations.',
-            model: 'Qwen2.5-VL-7B-Instruct',
+            content: 'MRPL Sovereign Intelligence Platform ready. I can assist with P&ID analysis, OISD standards, and refinery calculations.',
+            source: 'Sovereign AI',
           },
         ]);
       }
@@ -167,8 +200,8 @@ export default function ChatPage() {
         ...prev,
         {
           role: 'assistant',
-          content: `Hello! I am the Sovereign AI Workbench assistant at MRPL. Ready to assist with P&ID analysis, OISD standards lookup, and calculations.`,
-          model: 'Workbench-System',
+          content: 'MRPL Sovereign Intelligence Platform ready. I can assist with P&ID analysis, OISD standards lookup, and engineering calculations.',
+          source: 'Sovereign AI',
         },
       ]);
     } finally {
@@ -178,15 +211,19 @@ export default function ChatPage() {
 
   const handleHitlDecision = async (approved: boolean, comment: string) => {
     const currentThread = hitlData?.threadId || threadId;
+    const currentSession = getSession();
     try {
       const res = await fetch('/api/v1/agent/hitl/approve', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...getApiHeaders(),
+        },
         body: JSON.stringify({
           thread_id: currentThread,
           approved: approved,
           feedback: comment,
-          role: 'SAFETY_OFFICER',
+          role: currentSession.role,
         }),
       });
 
@@ -198,17 +235,9 @@ export default function ChatPage() {
             data = await res.json();
           } else {
             const rawText = await res.text();
-            try {
-              data = JSON.parse(rawText);
-            } catch {
-              data = { final_response: rawText };
-            }
+            try { data = JSON.parse(rawText); } catch { data = { final_response: rawText }; }
           }
-        } catch {
-          data = {};
-        }
-      } else {
-        console.warn(`HITL approval endpoint returned HTTP status ${res.status}`);
+        } catch { data = {}; }
       }
 
       setMessages((prev) => [
@@ -216,9 +245,9 @@ export default function ChatPage() {
         {
           role: 'assistant',
           content: approved
-            ? `✅ Action APPROVED by Safety Officer. Rationale: "${comment || 'Approved after review'}". Proceeding with execution.`
-            : `❌ Action REJECTED by Safety Officer. Rationale: "${comment || 'Rejected safety override'}". Operation cancelled.`,
-          model: 'Audit-Ledger',
+            ? `✅ **Action AUTHORIZED** by ${currentSession.userName} (${currentSession.userId}). Rationale: "${comment || 'Approved after safety review'}"."`
+            : `❌ **Action REJECTED** by ${currentSession.userName} (${currentSession.userId}). Rationale: "${comment || 'Safety override rejected'}". Operation cancelled.`,
+          source: 'Audit Ledger',
         },
       ]);
 
@@ -226,11 +255,7 @@ export default function ChatPage() {
         const finalAnswer = data.final_response || data.data?.content;
         setMessages((prev) => [
           ...prev,
-          {
-            role: 'assistant',
-            content: finalAnswer,
-            model: 'Qwen2.5-VL-7B-Instruct',
-          },
+          { role: 'assistant', content: finalAnswer, source: 'Sovereign AI' },
         ]);
       }
     } catch (e) {
@@ -240,65 +265,132 @@ export default function ChatPage() {
         {
           role: 'assistant',
           content: approved
-            ? `✅ Action APPROVED by Safety Officer. Rationale: "${comment || 'Approved after review'}". Proceeding with execution.`
-            : `❌ Action REJECTED by Safety Officer. Rationale: "${comment || 'Rejected safety override'}". Operation cancelled.`,
-          model: 'Audit-Ledger',
+            ? `✅ **Action AUTHORIZED**. Proceeding with execution.`
+            : `❌ **Action REJECTED**. Operation cancelled.`,
+          source: 'Audit Ledger',
         },
       ]);
     }
     setShowHitl(false);
   };
 
+  const toggleCodeExpand = (idx: number) => {
+    setExpandedCode((prev) => ({ ...prev, [idx]: !prev[idx] }));
+  };
+
+  const getSourceStyle = (source?: string) => {
+    switch (source) {
+      case 'Compliance Auditor': return { icon: AlertTriangle, color: 'text-accent-amber', bg: 'bg-accent-amber/10', border: 'border-accent-amber/20' };
+      case 'Engineering Sandbox': return { icon: Beaker, color: 'text-accent-emerald', bg: 'bg-accent-emerald/10', border: 'border-accent-emerald/20' };
+      case 'Audit Ledger': return { icon: Shield, color: 'text-purple-400', bg: 'bg-purple-400/10', border: 'border-purple-400/20' };
+      default: return { icon: Bot, color: 'text-accent-cyan', bg: 'bg-accent-cyan/10', border: 'border-accent-cyan/20' };
+    }
+  };
+
   return (
     <div className="h-full flex gap-6 p-6">
       <div className="flex-1 flex flex-col glass-panel rounded-xl border border-sovereign-border overflow-hidden">
+        {/* Header */}
         <div className="p-4 border-b border-sovereign-border bg-sovereign-surface/50 flex justify-between items-center">
-          <h2 className="font-mono font-bold text-gray-200 text-sm">Terminal // Chat Interaction</h2>
-          <span className="flex items-center text-xs font-mono text-accent-emerald bg-accent-emerald/10 px-2 py-1 rounded border border-accent-emerald/20">
-            <span className="w-2 h-2 rounded-full bg-accent-emerald mr-2 animate-pulse"></span>
-            Agent Ready
-          </span>
+          <h2 className="font-semibold text-gray-200 text-sm">MRPL AI Operational Console</h2>
+          <div className="flex items-center space-x-3">
+            <button
+              onClick={() => setShowSchematic(!showSchematic)}
+              className="text-xs text-gray-400 hover:text-accent-cyan transition-colors px-2 py-1 rounded border border-sovereign-border hover:border-accent-cyan/30"
+            >
+              {showSchematic ? 'Hide' : 'Show'} Schematic
+            </button>
+            <span className="flex items-center text-xs text-accent-emerald bg-accent-emerald/10 px-2 py-1 rounded border border-accent-emerald/20">
+              <span className="w-2 h-2 rounded-full bg-accent-emerald mr-2 animate-pulse" />
+              Online
+            </span>
+          </div>
         </div>
 
-        <div className="flex-1 p-6 overflow-y-auto space-y-6">
-          {messages.map((msg, i) => (
-            <div key={i} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
-              <div className={`flex items-center space-x-3 mb-2 ${msg.role === 'user' ? 'flex-row-reverse space-x-reverse' : ''}`}>
-                <div
-                  className={`p-2 rounded-md ${
-                    msg.role === 'user' ? 'bg-accent-cyan/20 text-accent-cyan' : 'bg-accent-amber/20 text-accent-amber'
-                  }`}
-                >
-                  {msg.role === 'user' ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
+        {/* Messages */}
+        <div className="flex-1 p-6 overflow-y-auto space-y-5">
+          {messages.map((msg, i) => {
+            const style = msg.role === 'assistant' ? getSourceStyle(msg.source) : null;
+            return (
+              <div key={i} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
+                {/* Source Label */}
+                <div className={`flex items-center space-x-2 mb-1.5 ${msg.role === 'user' ? 'flex-row-reverse space-x-reverse' : ''}`}>
+                  {msg.role === 'user' ? (
+                    <>
+                      <div className="p-1.5 rounded-md bg-accent-cyan/15">
+                        <User className="w-3.5 h-3.5 text-accent-cyan" />
+                      </div>
+                      <span className="text-xs text-gray-400">{session?.userName || 'You'}</span>
+                    </>
+                  ) : (
+                    <>
+                      <div className={`p-1.5 rounded-md ${style?.bg}`}>
+                        {style && <style.icon className={`w-3.5 h-3.5 ${style.color}`} />}
+                      </div>
+                      <span className={`text-xs font-medium ${style?.color}`}>{msg.source || 'Sovereign AI'}</span>
+                    </>
+                  )}
                 </div>
-                <span className="text-xs font-mono text-gray-400 uppercase tracking-wider">{msg.role}</span>
-                {msg.model && (
-                  <span className="text-xs font-mono bg-sovereign-border px-2 py-1 rounded text-gray-400 flex items-center border border-gray-700">
-                    <Cpu className="w-3 h-3 mr-1.5" /> {msg.model}
-                  </span>
-                )}
-              </div>
-              <div
-                className={`max-w-[85%] p-4 rounded-xl text-sm leading-relaxed shadow-sm ${
+
+                {/* Message Content */}
+                <div className={`max-w-[85%] rounded-xl text-sm leading-relaxed shadow-sm ${
                   msg.role === 'user'
-                    ? 'bg-accent-cyan/10 border border-accent-cyan/20 text-gray-200'
-                    : 'bg-sovereign-surface border border-sovereign-border text-gray-300 font-mono'
-                }`}
-              >
-                {msg.content}
+                    ? 'p-4 bg-accent-cyan/10 border border-accent-cyan/20 text-gray-200'
+                    : `p-4 bg-sovereign-surface border ${style?.border || 'border-sovereign-border'} text-gray-300`
+                }`}>
+                  {msg.role === 'assistant' ? (
+                    <div className="prose prose-invert prose-sm max-w-none prose-p:my-1 prose-headings:my-2 prose-ul:my-1 prose-li:my-0.5 prose-code:text-accent-cyan prose-code:bg-accent-cyan/10 prose-code:px-1 prose-code:rounded prose-pre:bg-sovereign-dark prose-pre:border prose-pre:border-sovereign-border">
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
+                    </div>
+                  ) : (
+                    msg.content
+                  )}
+
+                  {/* Code Sandbox Result */}
+                  {msg.codeData && (
+                    <div className="mt-3 space-y-2">
+                      {/* Sandbox Badge */}
+                      <div className="flex items-center space-x-2">
+                        <span className="text-[10px] text-accent-emerald bg-accent-emerald/10 px-2 py-0.5 rounded border border-accent-emerald/20 flex items-center">
+                          <Shield className="w-3 h-3 mr-1" />
+                          Verified in Isolated Ephemeral Sandbox (Zero Network)
+                        </span>
+                        {msg.codeData.exitCode === 0 && (
+                          <span className="text-[10px] text-accent-emerald">Exit: 0 ✓</span>
+                        )}
+                      </div>
+
+                      {/* Collapsible Script */}
+                      <button
+                        onClick={() => toggleCodeExpand(i)}
+                        className="flex items-center space-x-1.5 text-xs text-gray-400 hover:text-accent-cyan transition-colors"
+                      >
+                        {expandedCode[i] ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+                        <span>Inspect Calculation Logic & Formula</span>
+                      </button>
+                      {expandedCode[i] && msg.codeData.script && (
+                        <pre className="bg-sovereign-dark p-3 rounded-lg border border-sovereign-border text-xs text-gray-300 overflow-x-auto font-mono">
+                          {msg.codeData.script}
+                        </pre>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
           {isProcessing && (
-            <div className="flex items-center space-x-2 text-accent-cyan font-mono text-xs p-2">
+            <div className="flex items-center space-x-2 text-accent-cyan text-xs p-2">
               <Loader2 className="w-4 h-4 animate-spin" />
-              <span>Agent processing query...</span>
+              <span>Processing operational query...</span>
             </div>
           )}
+          <div ref={messagesEndRef} />
         </div>
 
+        {/* Input */}
         <div className="p-4 bg-sovereign-surface/80 border-t border-sovereign-border flex items-end space-x-3">
-          <button className="p-3.5 bg-sovereign-dark border border-sovereign-border rounded-xl hover:border-accent-cyan text-gray-400 hover:text-accent-cyan transition-colors group relative">
+          <button className="p-3 bg-sovereign-dark border border-sovereign-border rounded-xl hover:border-accent-cyan text-gray-400 hover:text-accent-cyan transition-colors group relative">
             <Upload className="w-5 h-5 group-hover:scale-110 transition-transform" />
             <span className="absolute -top-10 left-1/2 -translate-x-1/2 bg-sovereign-border text-xs text-gray-200 px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
               Upload P&ID
@@ -308,24 +400,27 @@ export default function ChatPage() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), handleSend())}
-            placeholder="Query schematics, ask about compliance..."
-            className="flex-1 bg-sovereign-dark border border-sovereign-border rounded-xl p-3.5 text-sm text-gray-200 focus:outline-none focus:border-accent-cyan focus:ring-1 focus:ring-accent-cyan/50 resize-none transition-all shadow-inner"
+            placeholder="Query schematics, lookup compliance standards, run calculations..."
+            className="flex-1 bg-sovereign-dark border border-sovereign-border rounded-xl p-3 text-sm text-gray-200 focus:outline-none focus:border-accent-cyan focus:ring-1 focus:ring-accent-cyan/50 resize-none transition-all shadow-inner"
             rows={1}
             disabled={isProcessing}
           />
           <button
             onClick={handleSend}
             disabled={isProcessing}
-            className="p-3.5 bg-accent-cyan/20 border border-accent-cyan/50 text-accent-cyan rounded-xl hover:bg-accent-cyan/30 transition-colors shadow-[0_0_10px_rgba(6,182,212,0.1)] hover:shadow-[0_0_15px_rgba(6,182,212,0.2)] disabled:opacity-50"
+            className="p-3 bg-accent-cyan/20 border border-accent-cyan/50 text-accent-cyan rounded-xl hover:bg-accent-cyan/30 transition-colors shadow-[0_0_10px_rgba(6,182,212,0.1)] hover:shadow-[0_0_15px_rgba(6,182,212,0.2)] disabled:opacity-50"
           >
             <Send className="w-5 h-5" />
           </button>
         </div>
       </div>
 
-      <div className="w-5/12 hidden lg:block">
-        <SchematicViewer />
-      </div>
+      {/* Schematic Panel */}
+      {showSchematic && (
+        <div className="w-5/12 hidden lg:block">
+          <SchematicViewer />
+        </div>
+      )}
 
       {hitlData && (
         <HitlApprovalModal

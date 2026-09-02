@@ -63,7 +63,6 @@ VLLM_BASE_URL=http://localhost:8002/v1 \
 QDRANT_URL=http://localhost:6333 \
 YOLO_SERVICE_URL=http://localhost:8001 \
 AUDIT_DB_PATH=./data/audit_ledger.db \
-CORS_ORIGIN=http://localhost:3000 \
 python -m uvicorn apps.api.main:app --host 0.0.0.0 --port 8080 &
 API_PID=$!
 
@@ -71,7 +70,7 @@ API_PID=$!
 echo -e "\n${GREEN}[5/5] Launching Next.js Industrial Web Dashboard (Port 3000)...${NC}"
 if [ -d "$REPO_ROOT/apps/web" ]; then
     cd "$REPO_ROOT/apps/web"
-    npm run dev &
+    npm run dev -- --hostname 0.0.0.0 &
     WEB_PID=$!
     cd "$REPO_ROOT"
 fi
