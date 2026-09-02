@@ -1,0 +1,12 @@
+path: ./training/yolo-pid/dataset
+train: images/train
+val: images/val
+
+nc: 6
+names:
+  0: control_valve
+  1: gate_valve
+  2: check_valve
+  3: globe_valve
+  4: centrifugal_pump
+  5: instrument_bubble

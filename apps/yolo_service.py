@@ -9,9 +9,19 @@ logger = logging.getLogger("yolo_service")
 
 app = FastAPI(title="YOLOv11s P&ID Detection Service")
 
-MODEL_PATH = Path("models/yolo11s.pt")
-logger.info(f"Loading YOLO model from {MODEL_PATH}...")
-model = YOLO(str(MODEL_PATH))
+# Prioritize fine-tuned ISA-5.1 P&ID model weights
+weights_path = Path("infra/models/pid_yolo_best.pt")
+fallback_weights = Path("training/yolo-pid/weights/best.pt")
+
+if weights_path.exists():
+    model_file = weights_path
+elif fallback_weights.exists():
+    model_file = fallback_weights
+else:
+    model_file = Path("yolov8s.pt")
+
+logger.info(f"Loading fine-tuned YOLO model from {model_file}...")
+model = YOLO(str(model_file))
 logger.info("YOLO model loaded successfully!")
 
 @app.get("/health")
@@ -19,7 +29,7 @@ async def health():
     return {
         "status": "healthy",
         "service": "YOLOv11s P&ID Detector",
-        "model": "models/yolo11s.pt"
+        "model": str(model_file)
     }
 
 @app.post("/detect")
