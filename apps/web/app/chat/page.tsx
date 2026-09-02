@@ -66,10 +66,30 @@ export default function ChatPage() {
   const [showHitl, setShowHitl] = useState(false);
   const [hitlData, setHitlData] = useState<HitlData | null>(null);
 
-  // Drawer toggles
-  const [showSchematicDrawer, setShowSchematicDrawer] = useState(false);
-  const [showTraceDrawer, setShowTraceDrawer] = useState(false);
-  const [expandedCode, setExpandedCode] = useState<Record<number, boolean>>({});
+  // Shared Schematic File State
+  const [attachedFile, setAttachedFile] = useState<File | null>(null);
+  const [attachedImageSrc, setAttachedImageSrc] = useState<string | null>(null);
+  const chatFileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const handleChatFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setAttachedFile(file);
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const src = event.target?.result as string;
+        setAttachedImageSrc(src);
+        setShowSchematicDrawer(true);
+        setShowTraceDrawer(false);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleSchematicFileChange = (file: File | null, src: string | null) => {
+    setAttachedFile(file);
+    setAttachedImageSrc(src);
+  };
 
   useEffect(() => {
     const s = getSession();
@@ -483,23 +503,55 @@ export default function ChatPage() {
         </div>
 
         {/* Input Bar */}
-        <div className="p-4 bg-sovereign-surface/80 border-t border-sovereign-border flex items-end space-x-3 shrink-0">
-          <textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), handleSend())}
-            placeholder="Query schematics, lookup OISD compliance standards, or run calculations..."
-            className="flex-1 bg-sovereign-dark border border-sovereign-border rounded-xl p-3.5 text-sm text-gray-200 focus:outline-none focus:border-accent-cyan focus:ring-1 focus:ring-accent-cyan/50 resize-none transition-all shadow-inner"
-            rows={1}
-            disabled={isProcessing}
-          />
-          <button
-            onClick={handleSend}
-            disabled={isProcessing}
-            className="p-3.5 bg-gradient-to-r from-accent-cyan/20 to-accent-emerald/20 border border-accent-cyan/50 text-accent-cyan rounded-xl hover:bg-accent-cyan/30 transition-colors shadow-[0_0_10px_rgba(6,182,212,0.15)] disabled:opacity-50"
-          >
-            <Send className="w-5 h-5" />
-          </button>
+        <div className="p-4 bg-sovereign-surface/80 border-t border-sovereign-border flex flex-col space-y-2 shrink-0">
+          {attachedFile && (
+            <div className="flex items-center justify-between px-3 py-1.5 rounded-lg bg-sovereign-dark border border-accent-cyan/30 text-xs font-mono text-accent-cyan">
+              <span className="truncate">Attached P&ID: {attachedFile.name} ({(attachedFile.size / 1024).toFixed(1)} KB)</span>
+              <button
+                onClick={() => {
+                  setAttachedFile(null);
+                  setAttachedImageSrc(null);
+                }}
+                className="text-gray-400 hover:text-white ml-2"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
+
+          <div className="flex items-end space-x-3">
+            <input
+              type="file"
+              ref={chatFileInputRef}
+              onChange={handleChatFileUpload}
+              accept="image/*,.pdf"
+              className="hidden"
+            />
+            <button
+              onClick={() => chatFileInputRef.current?.click()}
+              className="p-3.5 bg-sovereign-dark border border-sovereign-border text-gray-400 hover:text-accent-cyan rounded-xl transition-colors"
+              title="Attach P&ID Drawing to Chat & Open Inspector"
+            >
+              <Upload className="w-5 h-5 text-accent-cyan" />
+            </button>
+
+            <textarea
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), handleSend())}
+              placeholder="Query schematics, lookup OISD compliance standards, or run calculations..."
+              className="flex-1 bg-sovereign-dark border border-sovereign-border rounded-xl p-3.5 text-sm text-gray-200 focus:outline-none focus:border-accent-cyan focus:ring-1 focus:ring-accent-cyan/50 resize-none transition-all shadow-inner"
+              rows={1}
+              disabled={isProcessing}
+            />
+            <button
+              onClick={handleSend}
+              disabled={isProcessing}
+              className="p-3.5 bg-gradient-to-r from-accent-cyan/20 to-accent-emerald/20 border border-accent-cyan/50 text-accent-cyan rounded-xl hover:bg-accent-cyan/30 transition-colors shadow-[0_0_10px_rgba(6,182,212,0.15)] disabled:opacity-50"
+            >
+              <Send className="w-5 h-5" />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -516,7 +568,11 @@ export default function ChatPage() {
             </button>
           </div>
           <div className="flex-1 overflow-hidden">
-            <SchematicViewer />
+            <SchematicViewer
+              externalFile={attachedFile}
+              externalImageSrc={attachedImageSrc}
+              onFileChange={handleSchematicFileChange}
+            />
           </div>
         </div>
       )}

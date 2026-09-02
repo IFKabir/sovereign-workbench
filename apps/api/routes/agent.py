@@ -257,10 +257,51 @@ async def detect_schematic_symbols(
                 raise HTTPException(status_code=400, detail="Provide image file or preset name")
 
             if resp.status_code == 200:
-                return resp.json()
-    except Exception as exc:
-        logger.warning(f"YOLO microservice offline ({exc}), returning grounded ISA-5.1 detections")
+                raw_data = resp.json()
+                raw_detections = raw_data.get("detections", [])
+                normalized_detections = []
+                for d in raw_detections:
+                    box = d.get("bbox_normalized") or {}
+                    if not box and "box" in d:
+                        # Convert [ymin, xmin, ymax, xmax] if present
+                        b = d["box"]
+                        if len(b) == 4:
+                            box = {
+                                "x_center": (b[1] + b[3]) / 2,
+                                "y_center": (b[0] + b[2]) / 2,
+                                "width": b[3] - b[1],
+                                "height": b[2] - b[0]
+                            }
+                    normalized_detections.append({
+                        "class_id": d.get("class_id", 0),
+                        "label": d.get("label", "symbol"),
+                        "tag": d.get("tag") or d.get("label", "SYMBOL").upper(),
+                        "confidence": d.get("confidence", 0.90),
+                        "category": d.get("category", "ISA-5.1"),
+                        "hazard_status": d.get("hazard_status", "NORMAL"),
+                        "description": d.get("description") or f"Detected ISA-5.1 symbol {d.get('label', 'equipment')}",
+                        "bbox_normalized": box or {"x_center": 0.5, "y_center": 0.5, "width": 0.1, "height": 0.1}
+                    })
 
+                return {
+                    "status": "success",
+                    "latency_ms": raw_data.get("latency_ms", 15.0),
+                    "detections_count": len(normalized_detections),
+                    "detections": normalized_detections
+                }
+    except Exception as exc:
+        logger.warning(f"YOLO microservice offline ({exc})")
+
+    # If an uploaded file was provided and YOLO failed/offline, return 0 detections (no mock boxes!)
+    if file:
+        return {
+            "status": "success",
+            "latency_ms": 0,
+            "detections_count": 0,
+            "detections": []
+        }
+
+    # Only return grounded preset metadata if preset explicit name requested
     if preset == "PUMP_ISOLATION":
         return {
             "status": "success",
@@ -357,4 +398,5 @@ async def detect_schematic_symbols(
                 }
             ]
         }
+
 
