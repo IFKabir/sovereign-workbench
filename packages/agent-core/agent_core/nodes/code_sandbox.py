@@ -54,6 +54,7 @@ MATHEMATICAL FORMULAS REFERENCE:
 - Pump Power & BHP: P_hyd = (rho * g * Q * H) / 1000.0, BHP = P_hyd / eta
 
 RULES:
+- Always include `import math` at the top of the script.
 - Use ONLY Python standard library (math, sys). No third-party pip packages.
 - Use ONLY ASCII variable names in Python code.
 
