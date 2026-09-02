@@ -90,14 +90,44 @@ export default function SidebarNav() {
           <span>[+] AI Console</span>
         </Link>
 
-        {/* Previous Chat History */}
+        <p className="px-2 py-1 mt-4 text-[10px] text-[#8fb03e] uppercase tracking-widest font-bold bg-[#2b2b2b] border-l-2 border-[#8fb03e]">
+          ENGINEERING / इंजीनियरिंग
+        </p>
+        <Link
+          href="/schematic"
+          className={`flex items-center space-x-2.5 px-3 py-2 text-xs font-bold transition-colors border ${
+            pathname === '/schematic'
+              ? 'bg-[#57692c] text-white border-[#8fb03e]'
+              : 'text-[#c4c4c4] border-transparent hover:bg-[#2b2b2b] hover:text-white'
+          }`}
+        >
+          <Search className="w-4 h-4 text-[#8fb03e]" />
+          <span>[+] P&ID Inspection</span>
+        </Link>
+
+        {/* Audit Ledger restricted strictly to PLANT_DIRECTOR */}
+        {isDirector && (
+          <Link
+            href="/audit"
+            className={`flex items-center space-x-2.5 px-3 py-2 text-xs font-bold transition-colors border ${
+              pathname === '/audit'
+                ? 'bg-[#57692c] text-white border-[#8fb03e]'
+                : 'text-[#c4c4c4] border-transparent hover:bg-[#2b2b2b] hover:text-white'
+            }`}
+          >
+            <FileText className="w-4 h-4 text-[#8fb03e]" />
+            <span>[+] Audit Ledger</span>
+          </Link>
+        )}
+
+        {/* Previous Chat History - POSITIONED BELOW ENGINEERING */}
         {chatSessions.length > 0 && (
-          <div className="mt-3">
+          <div className="mt-4 pt-2 border-t border-[#8fb03e]/30">
             <p className="px-2 py-1 text-[10px] text-[#8fb03e] uppercase tracking-widest font-bold bg-[#2b2b2b] border-l-2 border-[#8fb03e] flex items-center justify-between">
               <span>PREVIOUS CHATS / पूर्व संवाद</span>
               <span className="text-[9px] text-[#c4c4c4]">({chatSessions.length})</span>
             </p>
-            <div className="mt-1.5 space-y-1 max-h-48 overflow-y-auto pr-0.5">
+            <div className="mt-1.5 space-y-1 max-h-56 overflow-y-auto pr-0.5">
               {chatSessions.map((s) => {
                 const isActive = currentThreadId === s.threadId;
                 const formattedTime = new Date(s.updatedAt).toLocaleTimeString([], {
@@ -127,7 +157,7 @@ export default function SidebarNav() {
 
                     <button
                       onClick={(e) => handleDeleteChat(e, s.threadId)}
-                      className="opacity-0 group-hover:opacity-100 p-1 text-neutral-400 hover:text-red-400 hover:bg-red-950/40 border border-transparent hover:border-red-500/40 transition-all shrink-0"
+                      className="opacity-0 group-hover:opacity-100 p-1 text-neutral-400 hover:text-red-400 hover:bg-red-950/40 border border-transparent hover:border-red-500/40 transition-all shrink-0 cursor-pointer"
                       title="Delete chat session"
                     >
                       <Trash2 className="w-3 h-3" />
@@ -137,36 +167,6 @@ export default function SidebarNav() {
               })}
             </div>
           </div>
-        )}
-
-        <p className="px-2 py-1 mt-4 text-[10px] text-[#8fb03e] uppercase tracking-widest font-bold bg-[#2b2b2b] border-l-2 border-[#8fb03e]">
-          ENGINEERING / इंजीनियरिंग
-        </p>
-        <Link
-          href="/schematic"
-          className={`flex items-center space-x-2.5 px-3 py-2 text-xs font-bold transition-colors border ${
-            pathname === '/schematic'
-              ? 'bg-[#57692c] text-white border-[#8fb03e]'
-              : 'text-[#c4c4c4] border-transparent hover:bg-[#2b2b2b] hover:text-white'
-          }`}
-        >
-          <Search className="w-4 h-4 text-[#8fb03e]" />
-          <span>[+] P&ID Inspection</span>
-        </Link>
-
-        {/* Audit Ledger restricted strictly to PLANT_DIRECTOR */}
-        {isDirector && (
-          <Link
-            href="/audit"
-            className={`flex items-center space-x-2.5 px-3 py-2 text-xs font-bold transition-colors border ${
-              pathname === '/audit'
-                ? 'bg-[#57692c] text-white border-[#8fb03e]'
-                : 'text-[#c4c4c4] border-transparent hover:bg-[#2b2b2b] hover:text-white'
-            }`}
-          >
-            <FileText className="w-4 h-4 text-[#8fb03e]" />
-            <span>[+] Audit Ledger</span>
-          </Link>
         )}
       </nav>
 
