@@ -22,7 +22,6 @@ import { useSearchParams } from 'next/navigation';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import SchematicViewer from '@/components/SchematicViewer';
-import DagVisualizer from '@/components/DagVisualizer';
 import HitlApprovalModal, { RiskLevel } from '@/components/HitlApprovalModal';
 import { getSession, getApiHeaders, type MRPLSession } from '@/lib/session';
 
@@ -68,7 +67,6 @@ export default function ChatPage() {
 
   // Drawer Toggles & Shared Schematic File State
   const [showSchematicDrawer, setShowSchematicDrawer] = useState(false);
-  const [showTraceDrawer, setShowTraceDrawer] = useState(false);
   const [attachedFile, setAttachedFile] = useState<File | null>(null);
   const [attachedImageSrc, setAttachedImageSrc] = useState<string | null>(null);
   const chatFileInputRef = useRef<HTMLInputElement | null>(null);
@@ -82,7 +80,6 @@ export default function ChatPage() {
         const src = event.target?.result as string;
         setAttachedImageSrc(src);
         setShowSchematicDrawer(true);
-        setShowTraceDrawer(false);
       };
       reader.readAsDataURL(file);
     }
@@ -354,25 +351,7 @@ export default function ChatPage() {
 
           <div className="flex items-center space-x-3">
             <button
-              onClick={() => {
-                setShowTraceDrawer(!showTraceDrawer);
-                setShowSchematicDrawer(false);
-              }}
-              className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-mono border transition-colors ${
-                showTraceDrawer
-                  ? 'bg-accent-amber/20 text-accent-amber border-accent-amber/40'
-                  : 'bg-sovereign-dark border-sovereign-border text-gray-400 hover:text-white'
-              }`}
-            >
-              <Route className="w-3.5 h-3.5" />
-              <span>Inspect Workflow Trace</span>
-            </button>
-
-            <button
-              onClick={() => {
-                setShowSchematicDrawer(!showSchematicDrawer);
-                setShowTraceDrawer(false);
-              }}
+              onClick={() => setShowSchematicDrawer(!showSchematicDrawer)}
               className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-mono border transition-colors ${
                 showSchematicDrawer
                   ? 'bg-accent-cyan/20 text-accent-cyan border-accent-cyan/40'
@@ -579,20 +558,7 @@ export default function ChatPage() {
         </div>
       )}
 
-      {/* Slide-over Drawer: Workflow Trace */}
-      {showTraceDrawer && (
-        <div className="w-5/12 glass-panel border border-sovereign-border rounded-2xl flex flex-col overflow-hidden shadow-2xl relative animate-in slide-in-from-right duration-200">
-          <div className="p-3 border-b border-sovereign-border bg-sovereign-surface flex justify-between items-center">
-            <span className="text-xs font-bold text-gray-200 font-mono">Multi-Agent Workflow DAG Trace</span>
-            <button onClick={() => setShowTraceDrawer(false)} className="text-gray-400 hover:text-white text-xs font-mono p-1">
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-          <div className="flex-1 overflow-hidden">
-            <DagVisualizer />
-          </div>
-        </div>
-      )}
+
 
       {/* HITL Modal */}
       {hitlData && (

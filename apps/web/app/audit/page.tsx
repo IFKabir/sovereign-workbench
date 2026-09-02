@@ -1,7 +1,8 @@
 'use client';
-import { FileCode2, Search, CheckCircle, ShieldAlert, ChevronDown, ChevronRight, RefreshCw, AlertTriangle } from 'lucide-react';
+import { FileCode2, Search, CheckCircle, ShieldAlert, ChevronDown, ChevronRight, RefreshCw, AlertTriangle, ShieldX } from 'lucide-react';
 import { useState, useEffect, Fragment } from 'react';
-import { getApiHeaders } from '@/lib/session';
+import Link from 'next/link';
+import { getApiHeaders, getSession, type MRPLSession } from '@/lib/session';
 
 interface AuditBlock {
   block_id: number;
@@ -19,6 +20,7 @@ interface AuditBlock {
 }
 
 export default function AuditPage() {
+  const [session, setSession] = useState<MRPLSession | null>(null);
   const [blocks, setBlocks] = useState<AuditBlock[]>([]);
   const [total, setTotal] = useState<number>(0);
   const [loading, setLoading] = useState<boolean>(true);
@@ -27,6 +29,16 @@ export default function AuditPage() {
   const [expanded, setExpanded] = useState<number | null>(null);
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [roleFilter, setRoleFilter] = useState<string>('ALL');
+
+  useEffect(() => {
+    const s = getSession();
+    setSession(s);
+    if (s?.role === 'PLANT_DIRECTOR') {
+      fetchAuditLogs();
+    } else {
+      setLoading(false);
+    }
+  }, []);
 
   const fetchAuditLogs = async () => {
     setLoading(true);
@@ -67,9 +79,27 @@ export default function AuditPage() {
     }
   };
 
-  useEffect(() => {
-    fetchAuditLogs();
-  }, []);
+  if (session && session.role !== 'PLANT_DIRECTOR') {
+    return (
+      <div className="p-8 max-w-4xl mx-auto min-h-[80vh] flex items-center justify-center">
+        <div className="glass-panel p-8 rounded-2xl border border-danger/30 bg-danger/5 text-center shadow-2xl max-w-lg">
+          <div className="w-16 h-16 rounded-2xl bg-danger/10 border border-danger/30 flex items-center justify-center mx-auto mb-4">
+            <ShieldX className="w-8 h-8 text-danger" />
+          </div>
+          <h2 className="text-xl font-bold text-gray-100 mb-2">Access Restricted</h2>
+          <p className="text-xs text-gray-400 font-mono leading-relaxed mb-6">
+            The Cryptographic Audit Ledger is restricted strictly to users with the <span className="text-danger font-bold">PLANT_DIRECTOR</span> operational role tier. Your current role is <span className="text-accent-amber font-bold">{session.role}</span>.
+          </p>
+          <Link
+            href="/"
+            className="px-5 py-2.5 bg-sovereign-dark border border-sovereign-border hover:border-gray-500 text-gray-300 hover:text-white rounded-xl text-xs font-mono font-bold inline-flex items-center transition-all"
+          >
+            Return to AI Operational Console
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   const filteredBlocks = blocks.filter((b) => {
     const matchesSearch =
