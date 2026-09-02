@@ -66,7 +66,9 @@ export default function ChatPage() {
   const [showHitl, setShowHitl] = useState(false);
   const [hitlData, setHitlData] = useState<HitlData | null>(null);
 
-  // Shared Schematic File State
+  // Drawer Toggles & Shared Schematic File State
+  const [showSchematicDrawer, setShowSchematicDrawer] = useState(false);
+  const [showTraceDrawer, setShowTraceDrawer] = useState(false);
   const [attachedFile, setAttachedFile] = useState<File | null>(null);
   const [attachedImageSrc, setAttachedImageSrc] = useState<string | null>(null);
   const chatFileInputRef = useRef<HTMLInputElement | null>(null);
