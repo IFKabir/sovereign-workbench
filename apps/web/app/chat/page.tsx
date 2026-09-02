@@ -1,5 +1,4 @@
 'use client';
-
 import { useState, useEffect, useRef } from 'react';
 import {
   Send,
@@ -11,12 +10,11 @@ import {
   ChevronRight,
   Shield,
   Beaker,
-  AlertTriangle,
   FileText,
   Search,
-  Route,
   X,
   BookOpen,
+  Image as ImageIcon,
 } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import ReactMarkdown from 'react-markdown';
@@ -25,20 +23,13 @@ import SchematicViewer from '@/components/SchematicViewer';
 import HitlApprovalModal, { RiskLevel } from '@/components/HitlApprovalModal';
 import { CitationList, type Citation } from '@/components/CitationList';
 import { getSession, getApiHeaders, type MRPLSession } from '@/lib/session';
-
-interface Message {
-  role: 'user' | 'assistant';
-  content: string;
-  source?: string;
-  citations?: Citation[];
-  codeData?: {
-    script?: string;
-    stdout?: string;
-    stderr?: string;
-    exitCode?: number;
-    sandboxMode?: string;
-  };
-}
+import {
+  getChatSession,
+  saveChatSession,
+  createNewChatSession,
+  getActiveThreadId,
+  type ChatMessage as Message,
+} from '@/lib/chatStore';
 
 interface HitlData {
   actionType: string;
@@ -48,6 +39,13 @@ interface HitlData {
   requiredRole: string;
   threadId: string;
 }
+
+const roleStyles: Record<string, { bg: string; color: string; border: string; icon: any }> = {
+  'Sovereign AI': { bg: 'bg-[#57692c]/20', color: 'text-[#8fb03e]', border: 'border-[#8fb03e]', icon: Bot },
+  'Compliance Auditor': { bg: 'bg-red-950/40', color: 'text-red-400', border: 'border-red-500', icon: Shield },
+  'Engineering Sandbox': { bg: 'bg-[#57692c]/30', color: 'text-[#8fb03e]', border: 'border-[#8fb03e]', icon: Beaker },
+  'P&ID Inspector': { bg: 'bg-amber-950/40', color: 'text-amber-400', border: 'border-amber-500', icon: Search },
+};
 
 export default function ChatPage() {
   const searchParams = useSearchParams();
@@ -64,6 +62,8 @@ export default function ChatPage() {
   const [showSchematicDrawer, setShowSchematicDrawer] = useState(false);
   const [attachedFile, setAttachedFile] = useState<File | null>(null);
   const [attachedImageSrc, setAttachedImageSrc] = useState<string | null>(null);
+  const [expandedCode, setExpandedCode] = useState<Record<number, boolean>>({});
+
   const chatFileInputRef = useRef<HTMLInputElement | null>(null);
 
   const handleChatFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -74,7 +74,6 @@ export default function ChatPage() {
       reader.onload = (event) => {
         const src = event.target?.result as string;
         setAttachedImageSrc(src);
-        setShowSchematicDrawer(true);
       };
       reader.readAsDataURL(file);
     }
@@ -85,11 +84,48 @@ export default function ChatPage() {
     setAttachedImageSrc(src);
   };
 
+  // Load chat session based on threadId parameter or active stored thread
   useEffect(() => {
     const s = getSession();
     if (s) {
       setSession(s);
-      setThreadId(s.sessionId);
+    }
+
+    const paramThreadId = searchParams.get('threadId');
+    if (paramThreadId) {
+      const existingSession = getChatSession(paramThreadId);
+      if (existingSession) {
+        setThreadId(existingSession.threadId);
+        setMessages(existingSession.messages);
+      } else {
+        setThreadId(paramThreadId);
+        const newSession = saveChatSession(paramThreadId, [
+          {
+            role: 'assistant',
+            content:
+              'MRPL Sovereign Intelligence Platform ready. I can assist with P&ID schematic analysis, OISD compliance standards lookup, engineering calculations, and shift handover digests. How can I help?',
+            source: 'Sovereign AI',
+          },
+        ]);
+        setMessages(newSession.messages);
+      }
+    } else {
+      const activeId = getActiveThreadId();
+      if (activeId) {
+        const existingSession = getChatSession(activeId);
+        if (existingSession) {
+          setThreadId(existingSession.threadId);
+          setMessages(existingSession.messages);
+        } else {
+          const fresh = createNewChatSession();
+          setThreadId(fresh.threadId);
+          setMessages(fresh.messages);
+        }
+      } else {
+        const fresh = createNewChatSession();
+        setThreadId(fresh.threadId);
+        setMessages(fresh.messages);
+      }
     }
 
     // Pre-fill query from dashboard quick launchers
@@ -97,24 +133,40 @@ export default function ChatPage() {
     if (q) {
       setInput(decodeURIComponent(q));
     }
+    const mode = searchParams.get('mode');
+    if (mode === 'schematic') {
+      setShowSchematicDrawer(true);
+    }
   }, [searchParams]);
 
+  // Automatically persist messages whenever updated
   useEffect(() => {
+    if (threadId && messages.length > 0) {
+      saveChatSession(threadId, messages);
+    }
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  }, [messages, threadId]);
 
   const handleSend = async () => {
-    if (!input.trim() || isProcessing) return;
+    if ((!input.trim() && !attachedImageSrc) || isProcessing) return;
 
-    const userQuery = input.trim();
+    const userQuery = input.trim() || 'Inspect attached P&ID diagram.';
     const currentSession = getSession();
     if (!currentSession) return;
 
     const activeThreadId = threadId || crypto.randomUUID();
     if (!threadId) setThreadId(activeThreadId);
 
-    setMessages((prev) => [...prev, { role: 'user', content: userQuery }]);
+    const userMsg: Message = {
+      role: 'user',
+      content: userQuery,
+      imageSrc: attachedImageSrc || undefined,
+    };
+
+    setMessages((prev) => [...prev, userMsg]);
     setInput('');
+    const currentAttachedSrc = attachedImageSrc;
+    setAttachedImageSrc(null);
     setIsProcessing(true);
 
     try {
@@ -129,6 +181,7 @@ export default function ChatPage() {
           user_id: currentSession.userId,
           role: currentSession.role,
           thread_id: activeThreadId,
+          image_data: currentAttachedSrc || undefined,
         }),
       });
 
@@ -247,6 +300,16 @@ export default function ChatPage() {
     const currentSession = getSession();
     if (!currentSession) return;
 
+    setMessages((prev) => [
+      ...prev,
+      {
+        role: 'user',
+        content: `[HITL Authorization Signal] Decision: ${approved ? 'APPROVED' : 'REJECTED'}. Note: "${comment || 'No comment provided'}"`,
+      },
+    ]);
+
+    setIsProcessing(true);
+
     try {
       const res = await fetch('/api/v1/agent/hitl/approve', {
         method: 'POST',
@@ -256,70 +319,46 @@ export default function ChatPage() {
         },
         body: JSON.stringify({
           thread_id: currentThread,
-          approved: approved,
-          feedback: comment,
+          approved,
+          user_id: currentSession.userId,
           role: currentSession.role,
+          comment,
         }),
       });
 
-      let data: any = {};
-      if (res.ok) {
-        try {
-          const contentType = res.headers.get('content-type') || '';
-          if (contentType.includes('application/json')) {
-            data = await res.json();
-          } else {
-            const rawText = await res.text();
-            try {
-              data = JSON.parse(rawText);
-            } catch {
-              data = { final_response: rawText };
-            }
-          }
-        } catch {
-          data = {};
-        }
-      }
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
 
       setMessages((prev) => [
         ...prev,
         {
           role: 'assistant',
-          content: approved
-            ? `✅ **Action AUTHORIZED** by ${currentSession.userName} (${currentSession.userId}). Rationale: "${comment || 'Approved after safety review'}". Proceeding with execution.`
-            : `❌ **Action REJECTED** by ${currentSession.userName} (${currentSession.userId}). Rationale: "${comment || 'Safety override rejected'}". Operation cancelled.`,
-          source: 'Audit Ledger',
+          content:
+            data.final_response ||
+            (approved
+              ? '✅ Action authorized and executed into process control stream.'
+              : '❌ Action rejected by Digital Permit sign-off.'),
+          source: 'Compliance Auditor',
         },
       ]);
-
-      if (approved && (data.final_response || data.data?.content)) {
-        const finalAnswer = data.final_response || data.data?.content;
-        setMessages((prev) => [
-          ...prev,
-          { role: 'assistant', content: finalAnswer, source: 'Sovereign AI' },
-        ]);
-      }
-    } catch (e) {
-      console.error('HITL approval POST error:', e);
+    } catch (err) {
+      console.error('HITL Decision Error:', err);
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: 'assistant',
+          content: 'Error communicating decision to sovereign engine checkpointer.',
+          source: 'Compliance Auditor',
+        },
+      ]);
+    } finally {
+      setIsProcessing(false);
+      setShowHitl(false);
     }
-    setShowHitl(false);
   };
 
   const toggleCodeExpand = (idx: number) => {
     setExpandedCode((prev) => ({ ...prev, [idx]: !prev[idx] }));
-  };
-
-  const getSourceStyle = (source?: string) => {
-    switch (source) {
-      case 'Compliance Auditor':
-        return { icon: AlertTriangle, color: 'text-accent-amber', bg: 'bg-accent-amber/10', border: 'border-accent-amber/20' };
-      case 'Engineering Sandbox':
-        return { icon: Beaker, color: 'text-accent-emerald', bg: 'bg-accent-emerald/10', border: 'border-accent-emerald/20' };
-      case 'Audit Ledger':
-        return { icon: Shield, color: 'text-purple-400', bg: 'bg-purple-400/10', border: 'border-purple-400/20' };
-      default:
-        return { icon: Bot, color: 'text-accent-cyan', bg: 'bg-accent-cyan/10', border: 'border-accent-cyan/20' };
-    }
   };
 
   return (
@@ -333,7 +372,7 @@ export default function ChatPage() {
             <div>
               <h2 className="font-bold text-[#e8e8e8] text-sm tracking-wider uppercase">MRPL AI OPERATIONAL CONSOLE</h2>
               <p className="text-[10px] text-[#c4c4c4]">
-                SESSION ID: {threadId ? `${threadId.slice(0, 12)}...` : 'ACTIVE'}
+                SESSION ID: {threadId ? threadId : 'ACTIVE'}
               </p>
             </div>
           </div>
@@ -360,127 +399,142 @@ export default function ChatPage() {
 
         {/* Chat Feed */}
         <div className="flex-1 p-6 overflow-y-auto space-y-6">
-          {messages.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center text-center p-8 max-w-xl mx-auto">
-              <div className="w-12 h-12 rounded-2xl bg-accent-cyan/10 border border-accent-cyan/20 flex items-center justify-center mb-4">
-                <Bot className="w-6 h-6 text-accent-cyan" />
-              </div>
-              <h3 className="text-base font-bold text-gray-200 mb-2">Refinery AI Console Ready</h3>
-              <p className="text-xs text-gray-400 leading-relaxed font-mono">
-                Grounded on ingested OISD-118, OISD-105, and API-520 regulatory standards. Enter an operational query, lookup safe separation distances, or calculate pressure drops.
-              </p>
-            </div>
-          ) : (
-            messages.map((msg, i) => {
-              const style = msg.role === 'assistant' ? getSourceStyle(msg.source) : null;
-              return (
-                <div key={i} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
-                  {/* Source Badge */}
-                  <div className={`flex items-center space-x-2 mb-1.5 ${msg.role === 'user' ? 'flex-row-reverse space-x-reverse' : ''}`}>
-                    {msg.role === 'user' ? (
-                      <>
-                        <div className="p-1.5 rounded-md bg-accent-cyan/15">
-                          <User className="w-3.5 h-3.5 text-accent-cyan" />
-                        </div>
-                        <span className="text-xs text-gray-400 font-mono">{session?.userName || 'Operator'}</span>
-                      </>
-                    ) : (
-                      <>
-                        <div className={`p-1.5 rounded-md ${style?.bg}`}>
-                          {style && <style.icon className={`w-3.5 h-3.5 ${style.color}`} />}
-                        </div>
-                        <span className={`text-xs font-semibold ${style?.color}`}>{msg.source || 'Sovereign AI'}</span>
-                      </>
-                    )}
-                  </div>
-
-                  {/* Message Bubble */}
-                  <div
-                    className={`max-w-[85%] rounded-2xl text-sm leading-relaxed shadow-sm ${
-                      msg.role === 'user'
-                        ? 'p-4 bg-accent-cyan/10 border border-accent-cyan/20 text-gray-200'
-                        : `p-5 bg-sovereign-surface border ${style?.border || 'border-sovereign-border'} text-gray-300`
-                    }`}
-                  >
-                    {msg.role === 'assistant' ? (
-                      <div className="prose prose-invert prose-sm max-w-none prose-p:my-1 prose-headings:my-2 prose-ul:my-1 prose-li:my-0.5 prose-code:text-accent-cyan prose-code:bg-accent-cyan/10 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-pre:bg-sovereign-dark prose-pre:border prose-pre:border-sovereign-border">
-                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
+          {messages.map((msg, i) => {
+            const style = msg.source ? roleStyles[msg.source] || roleStyles['Sovereign AI'] : roleStyles['Sovereign AI'];
+            return (
+              <div
+                key={i}
+                className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}
+              >
+                {/* Message Meta Badge */}
+                <div className="flex items-center space-x-2 mb-1.5 px-1">
+                  {msg.role === 'user' ? (
+                    <>
+                      <div className="p-1 rounded bg-[#57692c] border border-[#8fb03e]">
+                        <User className="w-3.5 h-3.5 text-white" />
                       </div>
-                    ) : (
-                      msg.content
-                    )}
-
-                    {/* Dynamic Governing Standard References (Collapsible Accordion) */}
-                    {msg.citations && msg.citations.length > 0 && (
-                      <CitationList citations={msg.citations} />
-                    )}
-
-                    {/* Engineering Calculation Result Block */}
-                    {msg.codeData && (
-                      <div className="mt-4 space-y-3">
-                        <div className="p-3.5 rounded-xl bg-sovereign-dark border border-accent-emerald/20">
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="text-xs font-bold text-accent-emerald flex items-center">
-                              <Beaker className="w-4 h-4 mr-1.5" /> Calculated Engineering Metric
-                            </span>
-                            <span className="text-[10px] text-accent-emerald bg-accent-emerald/10 px-2 py-0.5 rounded border border-accent-emerald/20 flex items-center">
-                              <Shield className="w-3 h-3 mr-1" />
-                              Verified in Ephemeral Sandbox (Zero Network)
-                            </span>
-                          </div>
-
-                          <div className="font-mono text-xs text-gray-200 bg-sovereign-surface p-3 rounded-lg border border-sovereign-border whitespace-pre-wrap">
-                            {msg.codeData.stdout}
-                          </div>
-                        </div>
-
-                        {/* Collapsible Formula Toggle */}
-                        <button
-                          onClick={() => toggleCodeExpand(i)}
-                          className="flex items-center space-x-1.5 text-xs text-gray-400 hover:text-accent-cyan transition-colors"
-                        >
-                          {expandedCode[i] ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
-                          <span>Inspect Calculation Logic & Python Script</span>
-                        </button>
-                        {expandedCode[i] && msg.codeData.script && (
-                          <pre className="bg-sovereign-dark p-3 rounded-lg border border-sovereign-border text-xs text-gray-300 overflow-x-auto font-mono">
-                            {msg.codeData.script}
-                          </pre>
-                        )}
+                      <span className="text-xs text-[#c4c4c4] font-bold">{session?.userName || 'Operator'}</span>
+                    </>
+                  ) : (
+                    <>
+                      <div className={`p-1 border ${style?.border} ${style?.bg}`}>
+                        {style && <style.icon className={`w-3.5 h-3.5 ${style.color}`} />}
                       </div>
-                    )}
-                  </div>
+                      <span className={`text-xs font-bold ${style?.color}`}>{msg.source || 'Sovereign AI'}</span>
+                    </>
+                  )}
                 </div>
-              );
-            })
-          )}
+
+                {/* Message Bubble */}
+                <div
+                  className={`max-w-[85%] text-xs leading-relaxed border ${
+                    msg.role === 'user'
+                      ? 'p-4 bg-[#57692c]/30 border-[#8fb03e] text-[#e8e8e8]'
+                      : `p-5 bg-[#1a1a1a] border-[#8fb03e] text-[#e8e8e8]`
+                  }`}
+                >
+                  {/* Render Image Attachment if Present */}
+                  {msg.imageSrc && (
+                    <div className="mb-3 border border-[#8fb03e] bg-[#121212] p-1.5">
+                      <img
+                        src={msg.imageSrc}
+                        alt="Attached P&ID Image"
+                        className="max-h-64 w-auto object-contain border border-[#8fb03e]"
+                      />
+                      <div className="bg-[#57692c] text-white px-2 py-0.5 text-[9px] font-bold mt-1 uppercase tracking-wider">
+                        ATTACHED P&ID DRAWING ATTACHMENT
+                      </div>
+                    </div>
+                  )}
+
+                  {msg.role === 'assistant' ? (
+                    <div className="prose prose-invert prose-sm max-w-none prose-p:my-1 prose-headings:my-2 prose-ul:my-1 prose-li:my-0.5 prose-code:text-[#8fb03e] prose-code:bg-[#57692c]/20 prose-code:px-1.5 prose-code:py-0.5 prose-pre:bg-[#121212] prose-pre:border prose-pre:border-[#8fb03e]">
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
+                    </div>
+                  ) : (
+                    msg.content
+                  )}
+
+                  {/* Dynamic Governing Standard References (Collapsible Accordion) */}
+                  {msg.citations && msg.citations.length > 0 && (
+                    <CitationList citations={msg.citations} />
+                  )}
+
+                  {/* Engineering Calculation Result Block */}
+                  {msg.codeData && (
+                    <div className="mt-4 space-y-3 font-mono">
+                      <div className="p-3 bg-[#121212] border border-[#8fb03e]">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-xs font-bold text-[#8fb03e] flex items-center">
+                            <Beaker className="w-4 h-4 mr-1.5" /> CALCULATED METRIC
+                          </span>
+                          <span className="text-[9px] text-white bg-[#57692c] px-2 py-0.5 border border-[#8fb03e] flex items-center font-bold">
+                            <Shield className="w-3 h-3 mr-1" />
+                            AIR-GAPPED EPHEMERAL SANDBOX
+                          </span>
+                        </div>
+
+                        <div className="text-xs text-[#e8e8e8] bg-[#1a1a1a] p-3 border border-[#8fb03e] whitespace-pre-wrap">
+                          {msg.codeData.stdout}
+                        </div>
+                      </div>
+
+                      {/* Collapsible Formula Toggle */}
+                      <button
+                        onClick={() => toggleCodeExpand(i)}
+                        className="flex items-center space-x-1.5 text-xs text-[#c4c4c4] hover:text-white transition-colors cursor-pointer"
+                      >
+                        {expandedCode[i] ? <ChevronDown className="w-3.5 h-3.5 text-[#8fb03e]" /> : <ChevronRight className="w-3.5 h-3.5 text-[#8fb03e]" />}
+                        <span>INSPECT CALCULATION LOGIC & PYTHON SCRIPT</span>
+                      </button>
+                      {expandedCode[i] && msg.codeData.script && (
+                        <pre className="bg-[#121212] p-3 border border-[#8fb03e] text-xs text-[#e8e8e8] overflow-x-auto">
+                          {msg.codeData.script}
+                        </pre>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
           {isProcessing && (
-            <div className="flex items-center space-x-2 text-accent-cyan text-xs p-3">
+            <div className="flex items-center space-x-2 text-[#8fb03e] text-xs p-3 font-bold">
               <Loader2 className="w-4 h-4 animate-spin" />
-              <span>Processing operational query against local standards...</span>
+              <span>PROCESSING OPERATIONAL QUERY AGAINST LOCAL STANDARDS & GROUNDED KNOWLEDGE...</span>
             </div>
           )}
           <div ref={messagesEndRef} />
         </div>
 
         {/* Input Bar */}
-        <div className="p-4 bg-sovereign-surface/80 border-t border-sovereign-border flex flex-col space-y-2 shrink-0">
-          {attachedFile && (
-            <div className="flex items-center justify-between px-3 py-1.5 rounded-lg bg-sovereign-dark border border-accent-cyan/30 text-xs font-mono text-accent-cyan">
-              <span className="truncate">Attached P&ID: {attachedFile.name} ({(attachedFile.size / 1024).toFixed(1)} KB)</span>
+        <div className="p-4 border-t border-[#8fb03e] bg-[#242424]">
+          {/* Preview Attached Image if Present */}
+          {attachedImageSrc && (
+            <div className="mb-3 p-2 bg-[#1a1a1a] border border-[#8fb03e] flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <img src={attachedImageSrc} alt="Preview" className="w-10 h-10 object-cover border border-[#8fb03e]" />
+                <div>
+                  <p className="text-xs font-bold text-[#e8e8e8] truncate">
+                    {attachedFile ? attachedFile.name : 'Attached Image Diagram'}
+                  </p>
+                  <p className="text-[9px] text-[#8fb03e]">Ready to send with operational query</p>
+                </div>
+              </div>
               <button
                 onClick={() => {
                   setAttachedFile(null);
                   setAttachedImageSrc(null);
                 }}
-                className="text-gray-400 hover:text-white ml-2"
+                className="text-neutral-400 hover:text-red-400 p-1"
+                title="Remove attachment"
               >
-                <X className="w-3.5 h-3.5" />
+                <X className="w-4 h-4" />
               </button>
             </div>
           )}
 
-          <div className="flex items-end space-x-3">
+          <div className="flex items-center space-x-3">
             <input
               type="file"
               ref={chatFileInputRef}
@@ -490,40 +544,43 @@ export default function ChatPage() {
             />
             <button
               onClick={() => chatFileInputRef.current?.click()}
-              className="p-3.5 bg-sovereign-dark border border-sovereign-border text-gray-400 hover:text-accent-cyan rounded-xl transition-colors"
-              title="Attach P&ID Drawing to Chat & Open Inspector"
+              className="p-2.5 bg-[#1a1a1a] border border-[#8fb03e] text-[#8fb03e] hover:bg-[#57692c] hover:text-white transition-colors cursor-pointer"
+              title="Attach P&ID Schematic / Diagram Image"
             >
-              <Upload className="w-5 h-5 text-accent-cyan" />
+              <Upload className="w-4 h-4" />
             </button>
 
-            <textarea
+            <input
+              type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), handleSend())}
-              placeholder="Query schematics, lookup OISD compliance standards, or run calculations..."
-              className="flex-1 bg-sovereign-dark border border-sovereign-border rounded-xl p-3.5 text-sm text-gray-200 focus:outline-none focus:border-accent-cyan focus:ring-1 focus:ring-accent-cyan/50 resize-none transition-all shadow-inner"
-              rows={1}
-              disabled={isProcessing}
+              onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+              placeholder="Ask an operational query, OISD standard, or calculate pipe metrics..."
+              className="flex-1 bg-[#1a1a1a] border border-[#8fb03e] px-4 py-2.5 text-xs text-[#e8e8e8] focus:outline-none focus:bg-[#282828] transition-all"
             />
+
             <button
               onClick={handleSend}
-              disabled={isProcessing}
-              className="p-3.5 bg-gradient-to-r from-accent-cyan/20 to-accent-emerald/20 border border-accent-cyan/50 text-accent-cyan rounded-xl hover:bg-accent-cyan/30 transition-colors shadow-[0_0_10px_rgba(6,182,212,0.15)] disabled:opacity-50"
+              disabled={isProcessing || (!input.trim() && !attachedImageSrc)}
+              className="px-5 py-2.5 bg-[#57692c] text-white font-bold border-2 border-[#8fb03e] hover:bg-[#8fb03e] hover:text-[#1a1a1a] text-xs transition-all disabled:opacity-50 flex items-center space-x-1.5 cursor-pointer uppercase"
             >
-              <Send className="w-5 h-5" />
+              <span>SEND / भेजें</span>
+              <Send className="w-3.5 h-3.5" />
             </button>
           </div>
         </div>
       </div>
 
-      {/* Slide-over Drawer: Schematic Inspector */}
+      {/* Slide-out Schematic Inspector Drawer */}
       {showSchematicDrawer && (
-        <div className="w-5/12 glass-panel border border-sovereign-border rounded-2xl flex flex-col overflow-hidden shadow-2xl relative animate-in slide-in-from-right duration-200">
-          <div className="p-3 border-b border-sovereign-border bg-sovereign-surface flex justify-between items-center">
-            <span className="text-xs font-bold text-gray-200 font-mono">Schematic Inspector Drawer</span>
+        <div className="w-[600px] flex flex-col bg-[#202020] border-2 border-[#8fb03e] overflow-hidden">
+          <div className="p-3 bg-[#242424] border-b border-[#8fb03e] flex justify-between items-center">
+            <h3 className="font-bold text-xs text-[#e8e8e8] tracking-wider uppercase">
+              P&ID SCHEMATIC INSPECTION CANVAS
+            </h3>
             <button
               onClick={() => setShowSchematicDrawer(false)}
-              className="text-gray-400 hover:text-white text-xs font-mono p-1"
+              className="text-xs text-[#c4c4c4] hover:text-white font-bold"
             >
               <X className="w-4 h-4" />
             </button>
@@ -538,9 +595,7 @@ export default function ChatPage() {
         </div>
       )}
 
-
-
-      {/* HITL Modal */}
+      {/* Human-In-The-Loop Approval Modal */}
       {hitlData && (
         <HitlApprovalModal
           isOpen={showHitl}
