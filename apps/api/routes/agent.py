@@ -147,7 +147,33 @@ async def agent_query(request: AgentQueryRequest):
                 final_res = final_state_values.get("final_response")
                 if not final_res:
                     final_res = "Query processed successfully."
-                yield f'data: {json.dumps({"event_type": "response", "status": "COMPLETED", "requires_approval": False, "data": {"content": final_res}})}\n\n'
+                
+                # Extract dynamic RAG citations from Qdrant/retriever chunks
+                citations = []
+                rag_results = final_state_values.get("rag_results") or {}
+                chunks = rag_results.get("chunks") or []
+                for c in chunks:
+                    if isinstance(c, dict):
+                        doc_title = c.get("title") or c.get("source", "Standard Document")
+                        if "standards/" in doc_title:
+                            doc_title = doc_title.replace("standards/", "").replace(".md", "").upper()
+                        citations.append({
+                            "document": doc_title,
+                            "section": c.get("source", "Standard Reference"),
+                            "excerpt": c.get("content", "")[:350],
+                            "score": round(float(c.get("score", 0.0)), 3) if c.get("score") is not None else None
+                        })
+
+                response_payload = {
+                    "event_type": "response",
+                    "status": "COMPLETED",
+                    "requires_approval": False,
+                    "data": {
+                        "content": final_res,
+                        "citations": citations
+                    }
+                }
+                yield f'data: {json.dumps(response_payload)}\n\n'
                 
         except Exception as e:
             yield f'data: {json.dumps({"event_type": "error", "error": str(e)})}\n\n'

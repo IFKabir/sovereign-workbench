@@ -25,17 +25,18 @@ import SchematicViewer from '@/components/SchematicViewer';
 import HitlApprovalModal, { RiskLevel } from '@/components/HitlApprovalModal';
 import { getSession, getApiHeaders, type MRPLSession } from '@/lib/session';
 
-interface CitationData {
-  document: string;
-  clause: string;
-  excerpt: string;
+interface Citation {
+  document: string;      // e.g., "OISD-105" or "oisd_105_work_permit.md"
+  section?: string;       // e.g., "Section 4: Isolation Protocols"
+  excerpt: string;        // The supporting text/table excerpt from Qdrant
+  score?: number;         // Similarity confidence score
 }
 
 interface Message {
   role: 'user' | 'assistant';
   content: string;
   source?: string;
-  citation?: CitationData;
+  citations?: Citation[];
   codeData?: {
     script?: string;
     stdout?: string;
@@ -149,6 +150,7 @@ export default function ChatPage() {
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let assistantText = '';
+      let responseCitations: Citation[] = [];
       let hitlTriggered = false;
 
       while (true) {
@@ -207,6 +209,9 @@ export default function ChatPage() {
                 ]);
               } else if (parsed.event_type === 'response' && parsed.data?.content) {
                 assistantText = parsed.data.content;
+                if (parsed.data.citations && Array.isArray(parsed.data.citations)) {
+                  responseCitations = parsed.data.citations;
+                }
               } else if (parsed.event_type === 'node_complete' && parsed.data?.final_response) {
                 assistantText = parsed.data.final_response;
               }
@@ -218,23 +223,13 @@ export default function ChatPage() {
       }
 
       if (!hitlTriggered && assistantText) {
-        // Detect citation card structure if present
-        let citation: CitationData | undefined;
-        if (userQuery.toLowerCase().includes('oisd') || userQuery.toLowerCase().includes('distance') || userQuery.toLowerCase().includes('separation')) {
-          citation = {
-            document: 'OISD-STD-118 (Layouts for Oil and Gas Installations)',
-            clause: 'Section 6.2 — Table 1: Minimum Safe Separation Distances',
-            excerpt: 'Minimum distance between process furnaces and crude oil storage tanks shall be 45 meters for pressurized installations.',
-          };
-        }
-
         setMessages((prev) => [
           ...prev,
           {
             role: 'assistant',
             content: assistantText,
             source: 'Sovereign AI',
-            citation,
+            citations: responseCitations.length > 0 ? responseCitations : undefined,
           },
         ]);
       }
@@ -421,17 +416,29 @@ export default function ChatPage() {
                       msg.content
                     )}
 
-                    {/* Governing Standard Reference (Citation Card) */}
-                    {msg.citation && (
-                      <div className="mt-4 p-3.5 rounded-xl bg-sovereign-dark/80 border border-accent-cyan/20">
-                        <div className="flex items-center space-x-2 text-accent-cyan text-xs font-semibold mb-1.5">
-                          <BookOpen className="w-4 h-4" />
-                          <span>{msg.citation.document}</span>
+                    {/* Dynamic Governing Standard References (Citation Cards) */}
+                    {msg.citations && msg.citations.length > 0 && (
+                      <div className="mt-4 space-y-2 font-mono">
+                        <div className="text-[10px] text-[#8fb03e] font-bold uppercase tracking-wider flex items-center mb-1">
+                          <BookOpen className="w-3.5 h-3.5 mr-1 text-[#8fb03e]" />
+                          Verified Standards Citation ({msg.citations.length})
                         </div>
-                        <p className="text-[11px] font-mono text-gray-400 mb-2">{msg.citation.clause}</p>
-                        <blockquote className="text-xs text-gray-300 border-l-2 border-accent-cyan pl-3 py-1 bg-sovereign-surface/40 rounded-r italic">
-                          "{msg.citation.excerpt}"
-                        </blockquote>
+                        {msg.citations.map((c, idx) => (
+                          <div key={idx} className="p-3 bg-[#1a1a1a] border border-[#8fb03e] text-xs">
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="font-bold text-[#e8e8e8]">{c.document}</span>
+                              {c.score !== undefined && c.score !== null && (
+                                <span className="text-[10px] text-[#8fb03e] bg-[#57692c]/40 px-1.5 py-0.5 border border-[#8fb03e]">
+                                  Match: {(c.score * 100).toFixed(1)}%
+                                </span>
+                              )}
+                            </div>
+                            {c.section && <p className="text-[10px] text-[#c4c4c4] mb-1.5">{c.section}</p>}
+                            <blockquote className="text-xs text-[#e8e8e8] border-l-2 border-[#8fb03e] pl-2.5 py-1 italic bg-[#222222]">
+                              "{c.excerpt}"
+                            </blockquote>
+                          </div>
+                        ))}
                       </div>
                     )}
 
