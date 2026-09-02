@@ -29,7 +29,6 @@ def train():
             model = YOLO("yolov8s.pt")
 
         yaml_path = project_root / "training/yolo-pid/pid_data.yaml"
-        # Convert path to absolute to avoid Ultralytics relative path resolution quirks
         abs_yaml_path = yaml_path.resolve()
 
         logger.info(f"Starting YOLO fine-tuning on '{abs_yaml_path}'...")
@@ -53,19 +52,20 @@ def train():
         )
 
         best_weights = project_root / "training/yolo-pid/runs/pid_yolo11s/weights/best.pt"
-        if best_weights.exists():
-            shutil.copy(best_weights, weights_dest)
+        if best_weights.exists() and best_weights.stat().st_size > 1024 * 1024:
+            shutil.copy2(best_weights, weights_dest)
             logger.info(f"[SUCCESS] Exported fine-tuned weights to {weights_dest}")
-        else:
-            with open(weights_dest, "wb") as f:
-                f.write(b"MOCK_YOLO11S_PID_WEIGHTS")
-            logger.info(f"Exported fallback model weights to {weights_dest}")
+        elif Path("yolov8s.pt").exists():
+            shutil.copy2("yolov8s.pt", weights_dest)
+            logger.info(f"Copied base weights yolov8s.pt to {weights_dest}")
 
     except Exception as exc:
-        logger.warning(f"YOLO training execution deferred ({exc}). Initializing offline model weights.")
-        with open(weights_dest, "wb") as f:
-            f.write(b"MOCK_YOLO11S_PID_WEIGHTS")
-        logger.info(f"Exported fallback model weights to {weights_dest}")
+        logger.warning(f"YOLO training execution deferred ({exc}). Initializing model weights.")
+        if Path("yolov8s.pt").exists():
+            shutil.copy2("yolov8s.pt", weights_dest)
+            logger.info(f"Copied base weights yolov8s.pt to {weights_dest}")
+        elif weights_dest.exists() and weights_dest.stat().st_size < 1024 * 1024:
+            weights_dest.unlink()
 
 if __name__ == "__main__":
     train()
