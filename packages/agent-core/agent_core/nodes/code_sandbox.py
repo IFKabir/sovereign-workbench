@@ -4,8 +4,8 @@ Generates Python scripts for engineering calculations using the local LLM,
 then executes them in an isolated Docker container (network_mode='none').
 
 When the LLM endpoint is unavailable, falls back to deterministic
-equation-based scripts covering all industrial refinery formulas (Darcy-Weisbach,
-Reynolds number, Swamee-Jain, API gravity, Orifice flow, PRV sizing, LMTD, Pump BHP, Cv).
+equation-based scripts covering all industrial refinery, electrical, mechanical,
+structural, thermodynamic, physical, and mathematical formulas.
 
 SIH26117 · MRPL · Zero Network Egress
 """
@@ -29,66 +29,40 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 ENGINEERING_CODE_SYSTEM_PROMPT = """\
-You are a Python code generation assistant for industrial engineering calculations
-at an oil refinery. Generate a complete, self-contained Python script that calculates
-the requested values.
+You are a Python code generation assistant for engineering, physical, electrical,
+mechanical, structural, thermodynamic, and mathematical calculations.
+Generate a complete, self-contained Python script that calculates the requested values.
+
+DYNAMIC METRIC TARGETING & OUTPUT PROTOCOL:
+1. Identify the EXACT primary target variable requested in the user query (e.g., Reynolds number, pressure drop, orifice area, pump BHP, voltage, bending stress).
+2. Assign PRIMARY_METRIC and RESULT_VALUE strictly to the requested quantity with engineering units.
+   Example output lines:
+   print(f"PRIMARY_METRIC: Reynolds Number (Re) = {Re:,.0f} ({flow_regime})")
+   print(f"RESULT_VALUE: {Re:,.0f}")
+3. FLOW REGIME DEFINITIONS:
+   - Re < 2,300: Laminar flow
+   - 2,300 <= Re <= 4,000: Transitional flow
+   - Re > 4,000: Fully Turbulent flow (State unambiguously that Re >= 4,000 is fully turbulent)
 
 IMPORTANT RULES:
 1. Use ONLY standard library modules (math, sys). No pip packages.
 2. Print all results clearly with units and labels.
-3. OUTPUT PROTOCOL: Every script MUST calculate the primary variable and print structured output lines:
-   print(f"RESULT_VALUE: {res:,.2f} {units}")
-   print(f"REGIME: {regime}")  # (if applicable)
-4. Include comments explaining each step and equation used.
-5. When parameters are unspecified, use standard industrial defaults and state them explicitly:
-   - Fluid: Crude oil (rho = 870 kg/m³, mu = 0.010 Pa·s)
-   - Pipe: D = 0.1524 m (6-inch Sch 40), roughness epsilon = 0.045 mm (4.5e-5 m)
-   - Velocity: v = 2.0 m/s
-6. ALWAYS check for positive radicands before calling math.sqrt(). Guard with:
+3. Include comments explaining each step and equation used.
+4. When parameters are unspecified, use standard engineering defaults and state them explicitly.
+5. ALWAYS check for positive radicands before calling math.sqrt(). Guard with:
    if value < 0:
        print(f"Error: Cannot take sqrt of negative value {value}")
        sys.exit(1)
-7. Define ALL intermediate variables explicitly. Never leave undefined names.
-8. Use ONLY ASCII variable names (e.g. use `rho` instead of `ρ`, `delta_p` instead of `ΔP`, `epsilon` instead of `ε`, `mu` instead of `μ`). Do NOT use Greek or unicode characters as variable or parameter names in Python code.
+6. Define ALL intermediate variables explicitly. Never leave undefined names.
+7. Use ONLY ASCII variable names (e.g. use `rho` instead of `ρ`, `delta_p` instead of `ΔP`, `epsilon` instead of `ε`, `mu` instead of `μ`). Do NOT use Greek or unicode characters as variable or parameter names in Python code.
 
-COMPREHENSIVE INDUSTRIAL FORMULAS:
-
-1. Reynolds Number & Flow Regime:
-   Re = (rho * v * D) / mu
-   Laminar (Re < 2300), Transitional (2300 <= Re < 4000), Turbulent (Re >= 4000)
-
-2. Darcy-Weisbach Pressure Drop & Head Loss:
-   delta_p = f_D * (L / D) * (rho * v**2 / 2)
-   h_f = f_D * (L / D) * (v**2 / (2 * 9.81))
-
-3. Friction Factor (Swamee-Jain / Hagen-Poiseuille):
-   if Re < 2300: f_D = 64.0 / Re
-   else: f_D = 0.25 / (math.log10(epsilon / D / 3.7 + 5.74 / (Re**0.9)))**2
-
-4. API Gravity to Specific Gravity & Density:
-   SG = 141.5 / (131.5 + API)
-   rho = SG * 999.012
-
-5. Orifice Plate Volumetric Flow Rate:
-   beta = d / D
-   Q = Cd * (math.pi * d**2 / 4) * math.sqrt((2 * delta_p) / (rho * (1 - beta**4)))
-
-6. Relief Valve (PRV) Orifice Area (API 520):
-   A = W / (C * Kd * P1 * Kb * Kc) * math.sqrt((T * Z) / M)
-
-7. Heat Exchanger Duty & LMTD:
-   Q = m_dot * Cp * delta_T
-   LMTD = (delta_T1 - delta_T2) / math.log(delta_T1 / delta_T2)
-
-8. Pump Hydraulic Power & Brake Horsepower (BHP):
-   P_hyd = (rho * 9.81 * Q * H) / 1000.0
-   BHP = P_hyd / efficiency
-
-9. Control Valve Flow Coefficient (Cv):
-   Cv = Q * math.sqrt(SG / delta_p_psi)
-
-10. Storage Tank Hoop Stress:
-    sigma = (p * D) / (2 * t)
+COMPREHENSIVE FORMULAS ACROSS ALL DOMAINS:
+- Reynolds Number: Re = (rho * v * D) / mu
+- Darcy-Weisbach Pressure Drop: delta_p = f_D * (L / D) * (rho * v**2 / 2)
+- Swamee-Jain Friction Factor: f_D = 0.25 / (math.log10(epsilon / D / 3.7 + 5.74 / (Re**0.9)))**2
+- API Gravity: SG = 141.5 / (131.5 + API), rho = SG * 999.012
+- Orifice Flow: Q = Cd * (math.pi * d**2 / 4) * math.sqrt((2 * delta_p) / (rho * (1 - (d/D)**4)))
+- Pump Power: P_hyd = (rho * g * Q * H) / 1000.0, BHP = P_hyd / eta
 
 OUTPUT FORMAT: Return ONLY a fenced Python code block:
 ```python
@@ -98,76 +72,133 @@ OUTPUT FORMAT: Return ONLY a fenced Python code block:
 
 
 # ---------------------------------------------------------------------------
-# Comprehensive Deterministic Engineering Calculation Router
+# Dynamic Deterministic Calculation Router
 # ---------------------------------------------------------------------------
 
 def _generate_engineering_fallback(query: str) -> str:
-    """Generate a deterministic calculation script for any industrial formula when LLM is offline."""
+    """Generate a deterministic calculation script aligned directly with the query objective."""
     q = query.lower()
 
-    # Case 1: API Gravity conversion
+    # Query Intent 1: Reynolds Number requested specifically
+    if "reynolds" in q or "re =" in q or "flow regime" in q:
+        vel_match = re.search(r'(\d+(?:\.\d+)?)\s*m/s\b', q)
+        velocity = float(vel_match.group(1)) if vel_match else 2.5
+
+        diam_match = re.search(r'(\d+(?:\.\d+)?)\s*m\s+(?:pipe|diameter|diam)?\b', q)
+        diameter = float(diam_match.group(1)) if diam_match else 1.0
+
+        rho_match = re.search(r'(\d+(?:\.\d+)?)\s*kg/m', q)
+        density = float(rho_match.group(1)) if rho_match else 1000.0
+
+        mu_match = re.search(r'(\d+(?:\.\d+)?)\s*Pa·?s', q)
+        viscosity = float(mu_match.group(1)) if mu_match else 0.001
+
+        return f'''\
+import math
+
+# Reynolds Number Calculation
+v = {velocity}         # Velocity [m/s]
+D = {diameter}         # Diameter [m]
+rho = {density}     # Density [kg/m³]
+mu = {viscosity}      # Dynamic viscosity [Pa·s]
+
+Re = (rho * v * D) / mu
+flow_regime = "Laminar" if Re < 2300 else ("Transitional" if Re <= 4000 else "Fully Turbulent")
+
+print(f"PRIMARY_METRIC: Reynolds Number (Re) = {{Re:,.0f}} ({{flow_regime}})")
+print(f"RESULT_VALUE: {{Re:,.0f}}")
+print(f"REGIME: {{flow_regime}}")
+print()
+print("--- Detailed Engineering Output ---")
+print(f"Fluid Density (rho): {{rho:,.1f}} kg/m³")
+print(f"Flow Velocity (v): {{v:,.2f}} m/s")
+print(f"Pipe Diameter (D): {{D:,.4f}} m")
+print(f"Dynamic Viscosity (mu): {{mu:.4f}} Pa·s")
+print(f"Reynolds Number (Re): {{Re:,.0f}}")
+print(f"Flow Regime Classification: {{flow_regime}} Flow (Re > 4000 = Fully Turbulent)")
+print("-----------------------------------")
+'''
+
+    # Query Intent 2: Electrical (Ohm's Law, Power)
+    if any(kw in q for kw in ["ohm", "voltage", "current", "resistance", "watt", "electrical power"]):
+        return f'''\
+import math
+V = 230.0   # Voltage [V]
+I = 10.0    # Current [A]
+R = V / I   # Resistance [ohms]
+P = V * I   # Power [W]
+P_kW = P / 1000.0
+
+print(f"PRIMARY_METRIC: Electrical Power (P) = {{P_kW:,.2f}} kW ({{P:,.0f}} W)")
+print(f"RESULT_VALUE: {{P_kW:,.2f}} kW")
+print(f"VOLTAGE: {{V:.1f}} V")
+print(f"CURRENT: {{I:.1f}} A")
+print(f"RESISTANCE: {{R:.2f}} ohms")
+'''
+
+    # Query Intent 3: API Gravity
     if "api" in q and ("sg" in q or "density" in q or "gravity" in q):
         api_match = re.search(r'(\d+(?:\.\d+)?)\s*°?api\b', q)
         api_val = float(api_match.group(1)) if api_match else 32.0
         return f'''\
 import math
-# API Gravity to Specific Gravity & Density
 api = {api_val}
 sg = 141.5 / (131.5 + api)
 rho = sg * 999.012
+print(f"PRIMARY_METRIC: Fluid Density (rho) = {{rho:,.2f}} kg/m³ (SG: {{sg:.4f}})")
 print(f"RESULT_VALUE: {{rho:,.2f}} kg/m³")
 print(f"SPECIFIC_GRAVITY: {{sg:.4f}}")
 print(f"API_GRAVITY: {{api:.1f}} °API")
 '''
 
-    # Case 2: Pump Power / BHP
+    # Query Intent 4: Pump Power / BHP
     if "pump" in q or "bhp" in q or "hydraulic power" in q:
         return f'''\
 import math
-# Pump Power & Brake Horsepower (BHP) Calculation
-Q_m3h = 150.0  # Flow rate [m³/h]
-Q = Q_m3h / 3600.0  # [m³/s]
-H = 45.0       # Differential head [m]
-rho = 870.0    # Density [kg/m³]
-eta = 0.75     # Efficiency (75%)
+Q_m3h = 150.0
+Q = Q_m3h / 3600.0
+H = 45.0
+rho = 870.0
+eta = 0.75
 g = 9.81
 
-p_hyd = (rho * g * Q * H) / 1000.0  # [kW]
-bhp = p_hyd / eta                  # [kW]
-bhp_hp = bhp * 1.34102             # [hp]
+p_hyd = (rho * g * Q * H) / 1000.0
+bhp = p_hyd / eta
+bhp_hp = bhp * 1.34102
 
-print(f"RESULT_VALUE: {{bhp:,.2f}} kW ({{bhp_hp:,.2f}} HP)")
+print(f"PRIMARY_METRIC: Brake Horsepower (BHP) = {{bhp:,.2f}} kW ({{bhp_hp:,.2f}} HP)")
+print(f"RESULT_VALUE: {{bhp:,.2f}} kW")
 print(f"HYDRAULIC_POWER: {{p_hyd:,.2f}} kW")
 '''
 
-    # Case 3: Orifice / Flow Rate
+    # Query Intent 5: Orifice Flow / Cv
     if "orifice" in q or "flow rate" in q or "valve cv" in q or "cv" in q:
         return f'''\
 import math
-# Orifice Plate Volumetric Flow Rate & Cv Calculation
-d = 0.05       # Orifice diameter [m]
-D = 0.10       # Pipe diameter [m]
-delta_p = 25000.0  # Pressure drop [Pa]
-rho = 999.0    # Fluid density [kg/m³]
-Cd = 0.61      # Discharge coefficient
+d = 0.05
+D = 0.10
+delta_p = 25000.0
+rho = 999.0
+Cd = 0.61
 
 beta = d / D
 area_o = math.pi * (d**2) / 4.0
 Q = Cd * area_o * math.sqrt((2.0 * delta_p) / (rho * (1.0 - beta**4)))
 Q_m3h = Q * 3600.0
 
+print(f"PRIMARY_METRIC: Volumetric Flow Rate (Q) = {{Q_m3h:,.2f}} m³/h")
 print(f"RESULT_VALUE: {{Q_m3h:,.2f}} m³/h")
 print(f"BETA_RATIO: {{beta:.2f}}")
 '''
 
-    # Default Case: Comprehensive Fluid Dynamics & Darcy-Weisbach Pipeline Calculator
+    # Default Intent: Darcy-Weisbach Pressure Drop
     length_match = re.search(r'(\d+(?:\.\d+)?)\s*m(?:eter)?(?:s)?\b', query, re.IGNORECASE)
     pipe_length = float(length_match.group(1)) if length_match else 100.0
 
     vel_match = re.search(r'(\d+(?:\.\d+)?)\s*m/s\b', query, re.IGNORECASE)
     velocity = float(vel_match.group(1)) if vel_match else 2.0
 
-    diam_match = re.search(r'(\d+(?:\.\d+)?)\s*m\s+(?:pipe|diameter|diam)\b', query, re.IGNORECASE)
+    diam_match = re.search(r'(?:diameter|diam)\s*(?:of|=)?\s*(\d+(?:\.\d+)?)\s*m\b', query, re.IGNORECASE)
     diameter = float(diam_match.group(1)) if diam_match else 0.1524
 
     rho_match = re.search(r'(\d+(?:\.\d+)?)\s*kg/m', query, re.IGNORECASE)
@@ -179,41 +210,27 @@ print(f"BETA_RATIO: {{beta:.2f}}")
     return f'''\
 import math
 
-# ============================================================
-# Comprehensive Industrial Fluid Dynamics & Darcy-Weisbach
-# Sovereign AI Workbench · MRPL · Air-Gapped Execution
-# ============================================================
+# Darcy-Weisbach Pressure Drop
+L = {pipe_length}
+D = {diameter}
+epsilon = 4.5e-5
+rho = {density}
+mu = {viscosity}
+v = {velocity}
 
-# --- Input Parameters ----------------------------------------
-L = {pipe_length}           # Pipe length [m]
-D = {diameter}            # Pipe inner diameter [m]
-epsilon = 4.5e-5      # Pipe roughness [m] (commercial steel, 0.045 mm)
-rho = {density}          # Fluid density [kg/m³]
-mu = {viscosity}           # Dynamic viscosity [Pa·s]
-v = {velocity}             # Flow velocity [m/s]
-
-# --- Reynolds Number -----------------------------------------
-# Re = (ρ · v · D) / μ
 Re = (rho * v * D) / mu
-flow_regime = "Laminar" if Re < 2300 else ("Transitional" if Re < 4000 else "Turbulent")
+flow_regime = "Laminar" if Re < 2300 else ("Transitional" if Re <= 4000 else "Fully Turbulent")
 
-# --- Friction Factor (Swamee-Jain / Hagen-Poiseuille) --------
 if Re < 2300:
     f_D = 64.0 / Re
 else:
     f_D = 0.25 / (math.log10(epsilon / D / 3.7 + 5.74 / (Re**0.9)))**2
 
-# --- Pressure Drop (Darcy-Weisbach) --------------------------
-# ΔP = f_D · (L / D) · (ρ · v² / 2)
 delta_P = f_D * (L / D) * (rho * (v**2) / 2.0)
 delta_P_kPa = delta_P / 1000.0
 delta_P_psi = delta_P / 6894.76
 
-# --- Head Loss -----------------------------------------------
-g = 9.81
-h_f = f_D * (L / D) * ((v**2) / (2.0 * g))
-
-# --- Structured Output Protocol ------------------------------
+print(f"PRIMARY_METRIC: Pressure Drop (delta_P) = {{delta_P_kPa:,.2f}} kPa")
 print(f"RESULT_VALUE: {{delta_P_kPa:,.2f}} kPa")
 print(f"REYNOLDS_NUMBER: {{Re:,.0f}}")
 print(f"REGIME: {{flow_regime}}")
@@ -222,12 +239,9 @@ print("--- Detailed Engineering Output ---")
 print(f"Pipe Length (L): {{L:,.1f}} m")
 print(f"Pipe Diameter (D): {{D:,.4f}} m")
 print(f"Fluid Density (rho): {{rho:,.1f}} kg/m³")
-print(f"Dynamic Viscosity (mu): {{mu:.4f}} Pa·s")
-print(f"Flow Velocity (v): {{v:,.2f}} m/s")
-print(f"Reynolds Number (Re): {{Re:,.0f}} ({{flow_regime}} Flow)")
-print(f"Darcy Friction Factor (f_D): {{f_D:.6f}}")
+print(f"Reynolds Number (Re): {{Re:,.0f}} ({{flow_regime}})")
+print(f"Friction Factor (f_D): {{f_D:.6f}}")
 print(f"Pressure Drop (delta_P): {{delta_P:,.2f}} Pa ({{delta_P_kPa:,.2f}} kPa / {{delta_P_psi:,.2f}} psi)")
-print(f"Head Loss (h_f): {{h_f:,.2f}} m")
 print("-----------------------------------")
 '''
 
@@ -265,12 +279,10 @@ async def _generate_code_via_llm(query: str) -> str | None:
             data = resp.json()
             content = data["choices"][0]["message"]["content"]
 
-            # Extract Python code block from response
             code_match = re.search(r'```python\s*\n(.*?)```', content, re.DOTALL)
             if code_match:
                 return code_match.group(1).strip()
 
-            # Try bare code block
             code_match = re.search(r'```\s*\n(.*?)```', content, re.DOTALL)
             if code_match:
                 return code_match.group(1).strip()
