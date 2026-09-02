@@ -1,11 +1,17 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, UploadFile, File, Form
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 import json
 import uuid
 import asyncio
+import os
+import logging
+import httpx
+from pathlib import Path
 from datetime import datetime, timezone
+
+logger = logging.getLogger(__name__)
 
 from agent_core.graph import build_workbench_graph
 
