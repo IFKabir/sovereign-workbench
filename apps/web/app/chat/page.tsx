@@ -23,14 +23,8 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import SchematicViewer from '@/components/SchematicViewer';
 import HitlApprovalModal, { RiskLevel } from '@/components/HitlApprovalModal';
+import { CitationList, type Citation } from '@/components/CitationList';
 import { getSession, getApiHeaders, type MRPLSession } from '@/lib/session';
-
-interface Citation {
-  document: string;      // e.g., "OISD-105" or "oisd_105_work_permit.md"
-  section?: string;       // e.g., "Section 4: Isolation Protocols"
-  excerpt: string;        // The supporting text/table excerpt from Qdrant
-  score?: number;         // Similarity confidence score
-}
 
 interface Message {
   role: 'user' | 'assistant';
@@ -416,30 +410,9 @@ export default function ChatPage() {
                       msg.content
                     )}
 
-                    {/* Dynamic Governing Standard References (Citation Cards) */}
+                    {/* Dynamic Governing Standard References (Collapsible Accordion) */}
                     {msg.citations && msg.citations.length > 0 && (
-                      <div className="mt-4 space-y-2 font-mono">
-                        <div className="text-[10px] text-[#8fb03e] font-bold uppercase tracking-wider flex items-center mb-1">
-                          <BookOpen className="w-3.5 h-3.5 mr-1 text-[#8fb03e]" />
-                          Verified Standards Citation ({msg.citations.length})
-                        </div>
-                        {msg.citations.map((c, idx) => (
-                          <div key={idx} className="p-3 bg-[#1a1a1a] border border-[#8fb03e] text-xs">
-                            <div className="flex items-center justify-between mb-1">
-                              <span className="font-bold text-[#e8e8e8]">{c.document}</span>
-                              {c.score !== undefined && c.score !== null && (
-                                <span className="text-[10px] text-[#8fb03e] bg-[#57692c]/40 px-1.5 py-0.5 border border-[#8fb03e]">
-                                  Match: {(c.score * 100).toFixed(1)}%
-                                </span>
-                              )}
-                            </div>
-                            {c.section && <p className="text-[10px] text-[#c4c4c4] mb-1.5">{c.section}</p>}
-                            <blockquote className="text-xs text-[#e8e8e8] border-l-2 border-[#8fb03e] pl-2.5 py-1 italic bg-[#222222]">
-                              "{c.excerpt}"
-                            </blockquote>
-                          </div>
-                        ))}
-                      </div>
+                      <CitationList citations={msg.citations} />
                     )}
 
                     {/* Engineering Calculation Result Block */}
