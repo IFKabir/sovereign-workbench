@@ -8,6 +8,7 @@ export interface CodeData {
   stderr?: string;
   exitCode?: number;
   sandboxMode?: string;
+  metrics?: Array<{ name: string; value: string }>;
 }
 
 export interface ChatMessage {

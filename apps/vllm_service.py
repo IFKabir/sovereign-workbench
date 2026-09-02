@@ -9,19 +9,42 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("vllm_service")
 
-app = FastAPI(title="Local LLM Inference Engine")
+app = FastAPI(title="Local LLM Inference Engine – 7B Sovereign Engine")
 
-# Model Scaling: Qwen2.5-0.5B-Instruct (Default Fast Mode) / Qwen2.5-VL-7B-Instruct (Multimodal Mode)
-MODEL_ID = os.getenv("VLLM_MODEL_NAME", "Qwen/Qwen2.5-0.5B-Instruct")
-logger.info(f"Loading LLM weights from '{MODEL_ID}' on GPU/CPU...")
+# 7B Quantized / Full Model Target
+MODEL_ID = os.getenv("VLLM_MODEL_NAME", "Qwen/Qwen2.5-Coder-7B-Instruct")
+GGUF_PATH = os.getenv("GGUF_MODEL_PATH", "infra/models/qwen2.5-vl-7b-instruct-q4_k_m.gguf")
 
-tokenizer = AutoTokenizer.from_pretrained(MODEL_ID)
-model = AutoModelForCausalLM.from_pretrained(
-    MODEL_ID,
-    torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32,
-    device_map="auto" if torch.cuda.is_available() else None
-)
-logger.info(f"LLM engine '{MODEL_ID}' loaded successfully!")
+logger.info(f"Loading 7B LLM engine weights from '{MODEL_ID}'...")
+
+# Try 4-bit BitsAndBytes quantization if CUDA GPU is available
+quantization_config = None
+if torch.cuda.is_available():
+    try:
+        from transformers import BitsAndBytesConfig
+        quantization_config = BitsAndBytesConfig(
+            load_in_4bit=True,
+            bnb_4bit_compute_dtype=torch.float16,
+            bnb_4bit_quant_type="nf4",
+        )
+        logger.info("Using 4-bit BitsAndBytes quantization (load_in_4bit=True)")
+    except Exception as e:
+        logger.warning(f"BitsAndBytes 4-bit config unavailable ({e}), using standard fp16 precision")
+
+try:
+    tokenizer = AutoTokenizer.from_pretrained(MODEL_ID, trust_remote_code=True)
+    model = AutoModelForCausalLM.from_pretrained(
+        MODEL_ID,
+        torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32,
+        device_map="auto" if torch.cuda.is_available() else None,
+        quantization_config=quantization_config if torch.cuda.is_available() else None,
+        trust_remote_code=True
+    )
+    logger.info(f"7B LLM engine '{MODEL_ID}' loaded successfully!")
+except Exception as e:
+    logger.warning(f"Primary model load failed ({e}). Initializing fallback tokenizer/model.")
+    tokenizer = AutoTokenizer.from_pretrained("Qwen/Qwen2.5-0.5B-Instruct")
+    model = AutoModelForCausalLM.from_pretrained("Qwen/Qwen2.5-0.5B-Instruct")
 
 @app.get("/v1/models")
 async def list_models():
@@ -41,8 +64,8 @@ async def list_models():
 async def chat_completions(request: Request):
     data = await request.json()
     messages = data.get("messages", [])
-    max_tokens = data.get("max_tokens", 512)
-    temperature = data.get("temperature", 0.3)
+    max_tokens = data.get("max_tokens", 1024)
+    temperature = data.get("temperature", 0.1)
 
     if not messages:
         return JSONResponse(status_code=400, content={"error": "No messages provided"})
@@ -50,7 +73,7 @@ async def chat_completions(request: Request):
     formatted_text = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
     device = "cuda" if torch.cuda.is_available() else "cpu"
     inputs = tokenizer([formatted_text], return_tensors="pt").to(device)
-    
+
     with torch.no_grad():
         outputs = model.generate(
             **inputs,

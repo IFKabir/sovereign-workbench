@@ -273,6 +273,7 @@ export default function ChatPage() {
                       stderr: cd.stderr,
                       exitCode: cd.exit_code ?? 0,
                       sandboxMode: cd.sandbox_mode,
+                      metrics: cd.metrics || [],
                     },
                   },
                 ]);
@@ -487,16 +488,27 @@ export default function ChatPage() {
                   {/* Engineering Calculation Result Block */}
                   {msg.codeData && (() => {
                     const stdoutLines = (msg.codeData.stdout || '').split('\n').map((l) => l.trim()).filter(Boolean);
-                    const primaryLine = stdoutLines.find(
-                      (l) => l.startsWith('PRIMARY_METRIC:') || l.startsWith('RESULT_VALUE:') || l.startsWith('REYNOLDS_NUMBER:') || l.startsWith('Calculated:')
-                    ) || stdoutLines[0] || 'Calculation completed.';
 
-                    const cleanPrimaryText = primaryLine
-                      .replace(/^(PRIMARY_METRIC|RESULT_VALUE|REYNOLDS_NUMBER):\s*/, '')
-                      .trim();
+                    let metricsList: Array<{ name: string; value: string }> = msg.codeData.metrics || [];
+                    if (metricsList.length === 0) {
+                      for (const line of stdoutLines) {
+                        if (line.startsWith('PRIMARY_METRIC:') || line.startsWith('RESULT_VALUE:')) {
+                          const raw = line.replace(/^(PRIMARY_METRIC|RESULT_VALUE):\s*/, '').trim();
+                          if (raw.includes('=')) {
+                            const [k, v] = raw.split('=', 2);
+                            metricsList.push({ name: k.trim(), value: v.trim() });
+                          } else {
+                            metricsList.push({ name: 'Calculated Metric', value: raw });
+                          }
+                        }
+                      }
+                      if (metricsList.length === 0 && stdoutLines.length > 0) {
+                        metricsList.push({ name: 'Primary Result', value: stdoutLines[0] });
+                      }
+                    }
 
                     const detailLines = stdoutLines.filter(
-                      (l) => l !== primaryLine && !l.startsWith('RESULT_VALUE:') && !l.startsWith('PRIMARY_METRIC:') && !l.startsWith('REGIME:')
+                      (l) => !l.startsWith('RESULT_VALUE:') && !l.startsWith('PRIMARY_METRIC:') && !l.startsWith('REGIME:')
                     );
 
                     return (
@@ -504,7 +516,7 @@ export default function ChatPage() {
                         <div className="p-3 bg-[#121212] border border-[#8fb03e]">
                           <div className="flex items-center justify-between mb-2">
                             <span className="text-xs font-bold text-[#8fb03e] flex items-center">
-                              <Beaker className="w-4 h-4 mr-1.5" /> CALCULATED METRIC
+                              <Beaker className="w-4 h-4 mr-1.5" /> CALCULATED METRIC{metricsList.length > 1 ? 'S' : ''}
                             </span>
                             <span className="text-[9px] text-white bg-[#57692c] px-2 py-0.5 border border-[#8fb03e] flex items-center font-bold">
                               <Shield className="w-3 h-3 mr-1" />
@@ -512,26 +524,31 @@ export default function ChatPage() {
                             </span>
                           </div>
 
-                          {/* Highlighted Banner Primary Target Metric */}
-                          <div className="text-sm font-bold text-[#8fb03e] bg-[#1a1a1a] p-3 border border-[#8fb03e]">
-                            {cleanPrimaryText}
+                          {/* Dynamic Multi-Parameter Metric Grid */}
+                          <div className={`grid gap-2 mt-2 ${metricsList.length > 1 ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1'}`}>
+                            {metricsList.map((m, idx) => (
+                              <div key={idx} className="p-3 bg-[#1a1a1a] border border-[#8fb03e]">
+                                <div className="text-[10px] text-[#c4c4c4] font-mono uppercase font-bold">{m.name}</div>
+                                <div className="text-sm font-bold text-[#8fb03e] font-mono mt-0.5">{m.value}</div>
+                              </div>
+                            ))}
                           </div>
                         </div>
 
-                        {/* Collapsible Formula & Output Inspection Toggle */}
+                        {/* Collapsible Inspection Section */}
                         <button
                           onClick={() => toggleCodeExpand(i)}
                           className="flex items-center space-x-1.5 text-xs text-[#c4c4c4] hover:text-white transition-colors cursor-pointer"
                         >
                           {expandedCode[i] ? <ChevronDown className="w-3.5 h-3.5 text-[#8fb03e]" /> : <ChevronRight className="w-3.5 h-3.5 text-[#8fb03e]" />}
-                          <span>INSPECT CALCULATION LOGIC & PYTHON SCRIPT</span>
+                          <span>INSPECT CALCULATION LOGIC & RAW EXECUTION LOGS</span>
                         </button>
 
                         {expandedCode[i] && (
                           <div className="space-y-2">
                             {detailLines.length > 0 && (
                               <div className="bg-[#121212] p-3 border border-[#8fb03e] text-xs text-[#e8e8e8] whitespace-pre-wrap font-mono">
-                                <p className="text-[10px] text-[#8fb03e] font-bold mb-1 uppercase">Detailed Calculation Output:</p>
+                                <p className="text-[10px] text-[#8fb03e] font-bold mb-1 uppercase">Detailed Execution Output:</p>
                                 {detailLines.join('\n')}
                               </div>
                             )}

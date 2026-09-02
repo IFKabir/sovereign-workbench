@@ -140,6 +140,7 @@ async def agent_query(request: AgentQueryRequest):
                             "stderr": code_out.get("stderr", ""),
                             "exit_code": code_out.get("exit_code", -1),
                             "sandbox_mode": code_out.get("sandbox_mode", "unknown"),
+                            "metrics": code_out.get("metrics", []),
                         }
                     }
                     yield f'data: {json.dumps(code_payload)}\n\n'
