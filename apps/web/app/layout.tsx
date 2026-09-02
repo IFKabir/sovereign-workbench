@@ -9,6 +9,11 @@ const inter = Inter({ subsets: ['latin'] });
 export const metadata = {
   title: 'MRPL Sovereign Intelligence Platform — Govt. of India Enterprise',
   description: 'Mangalore Refinery and Petrochemicals Limited — On-Premise Operational Copilot',
+  icons: {
+    icon: '/mrpl_logo.jpg',
+    shortcut: '/mrpl_logo.jpg',
+    apple: '/mrpl_logo.jpg',
+  },
 };
 
 export default function RootLayout({
@@ -18,6 +23,11 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="dark">
+      <head>
+        <link rel="icon" href="/mrpl_logo.jpg" type="image/jpeg" sizes="any" />
+        <link rel="shortcut icon" href="/mrpl_logo.jpg" type="image/jpeg" />
+        <link rel="apple-touch-icon" href="/mrpl_logo.jpg" />
+      </head>
       <body className={`${inter.className} bg-[#1a1a1a] text-[#e8e8e8] min-h-screen flex`}>
         <AuthGuard>
           {/* Main Layout: Sidebar + Full Workspace */}
