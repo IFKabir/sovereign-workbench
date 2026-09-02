@@ -159,7 +159,7 @@ async def generate_response(state: WorkbenchState) -> dict:
             "current_node": "generate_response",
         }
 
-    vllm_url = os.environ.get("VLLM_BASE_URL", "http://localhost:8000/v1")
+    vllm_url = os.environ.get("VLLM_BASE_URL", "http://localhost:8002/v1")
 
     # --- Build generic context block from prior nodes --------------------
     # Only aggregate context from the node that was actually executed
