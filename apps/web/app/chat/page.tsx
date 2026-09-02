@@ -52,12 +52,20 @@ const roleStyles: Record<string, { bg: string; color: string; border: string; ic
 function preprocessLatex(content: string): string {
   if (!content) return '';
   let text = content;
-  // Convert \[ ... \] to $$ ... $$
+
+  // 1. Standard LaTeX display math delimiters \[ ... \] -> $$ ... $$
   text = text.replace(/\\\[\s*([\s\S]*?)\s*\\\]/g, '\n$$\n$1\n$$\n');
-  // Convert \( ... \) to $ ... $
+
+  // 2. Standard LaTeX inline math delimiters \( ... \) -> $ ... $
   text = text.replace(/\\\(\s*([\s\S]*?)\s*\\\)/g, ' $$1$ ');
-  // Convert bare bracketed LaTeX equations like [ \text{Re} = ... ] to $$ \text{Re} = ... $$
+
+  // 3. Convert bare bracketed LaTeX math expressions like [ \text{Re} = ... ] or [ Re = \frac{...} ]
   text = text.replace(/(?:^|\n)\[\s*(\\text\{[\s\S]*?)\s*\](?:\n|$)/g, '\n$$\n$1\n$$\n');
+  text = text.replace(/(?:^|\n)\[\s*([A-Za-z0-9_\s\\\{\}\(\)\+\-\*\/\=\.\,\:\^\;\%\$\|\&\<\>]+?\\(?:frac|sqrt|rho|mu|delta|sigma|eta|pi|cdot|times|text)[\s\S]*?)\s*\](?:\n|$)/g, '\n$$\n$1\n$$\n');
+
+  // 4. Sanitize quadruple dollar signs $$$$ -> $$
+  text = text.replace(/\$\$\$\$/g, '$$');
+
   return text;
 }
 
