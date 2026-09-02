@@ -19,6 +19,8 @@ import {
 import { useSearchParams } from 'next/navigation';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
 import SchematicViewer from '@/components/SchematicViewer';
 import HitlApprovalModal, { RiskLevel } from '@/components/HitlApprovalModal';
 import { CitationList, type Citation } from '@/components/CitationList';
@@ -46,6 +48,18 @@ const roleStyles: Record<string, { bg: string; color: string; border: string; ic
   'Engineering Sandbox': { bg: 'bg-[#57692c]/30', color: 'text-[#8fb03e]', border: 'border-[#8fb03e]', icon: Beaker },
   'P&ID Inspector': { bg: 'bg-amber-950/40', color: 'text-amber-400', border: 'border-amber-500', icon: Search },
 };
+
+function preprocessLatex(content: string): string {
+  if (!content) return '';
+  let text = content;
+  // Convert \[ ... \] to $$ ... $$
+  text = text.replace(/\\\[\s*([\s\S]*?)\s*\\\]/g, '\n$$\n$1\n$$\n');
+  // Convert \( ... \) to $ ... $
+  text = text.replace(/\\\(\s*([\s\S]*?)\s*\\\)/g, ' $$1$ ');
+  // Convert bare bracketed LaTeX equations like [ \text{Re} = ... ] to $$ \text{Re} = ... $$
+  text = text.replace(/(?:^|\n)\[\s*(\\text\{[\s\S]*?)\s*\](?:\n|$)/g, '\n$$\n$1\n$$\n');
+  return text;
+}
 
 export default function ChatPage() {
   const searchParams = useSearchParams();
@@ -449,7 +463,9 @@ export default function ChatPage() {
 
                   {msg.role === 'assistant' ? (
                     <div className="prose prose-invert prose-sm max-w-none prose-p:my-1 prose-headings:my-2 prose-ul:my-1 prose-li:my-0.5 prose-code:text-[#8fb03e] prose-code:bg-[#57692c]/20 prose-code:px-1.5 prose-code:py-0.5 prose-pre:bg-[#121212] prose-pre:border prose-pre:border-[#8fb03e]">
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
+                      <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>
+                        {preprocessLatex(msg.content)}
+                      </ReactMarkdown>
                     </div>
                   ) : (
                     msg.content

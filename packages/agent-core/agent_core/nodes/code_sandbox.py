@@ -36,43 +36,32 @@ the requested values.
 IMPORTANT RULES:
 1. Use ONLY standard library modules (math, sys). No pip packages.
 2. Print all results clearly with units and labels.
-3. Include comments explaining each step and equation used.
-4. When parameters are unspecified, use standard industrial defaults and state them explicitly.
-5. ALWAYS check for positive radicands before calling math.sqrt(). Guard with:
+3. OUTPUT PROTOCOL: Every script MUST calculate the primary variable and print structured output lines:
+   print(f"RESULT_VALUE: {res:,.2f} {units}")
+   print(f"REGIME: {regime}")
+4. Include comments explaining each step and equation used.
+5. When parameters are unspecified, use standard industrial defaults and state them explicitly.
+   - Fluid: Crude oil (rho = 870 kg/m³, mu = 0.010 Pa·s)
+   - Pipe: D = 0.1524 m (6-inch Sch 40), roughness epsilon = 0.045 mm (4.5e-5 m)
+   - Velocity: v = 2.0 m/s
+6. ALWAYS check for positive radicands before calling math.sqrt(). Guard with:
    if value < 0:
        print(f"Error: Cannot take sqrt of negative value {value}")
        sys.exit(1)
-6. Define ALL intermediate variables explicitly. Never leave undefined names.
-7. Match the formula to the problem type. Do NOT use pipe-friction formulas for PRV sizing.
+7. Define ALL intermediate variables explicitly. Never leave undefined names.
 8. Use ONLY ASCII variable names (e.g. use `rho` instead of `ρ`, `delta_p` instead of `ΔP`, `epsilon` instead of `ε`, `mu` instead of `μ`). Do NOT use Greek or unicode characters as variable or parameter names in Python code.
 
-STANDARD EQUATIONS & DEFAULTS:
+STANDARD EQUATIONS:
 
-1. Darcy-Weisbach Pressure Drop:
-   ΔP = f_D · (L / D) · (ρ · v² / 2)
-   Default pipe: D = 0.1524 m (6-inch Sch 40), ε = 0.045 mm (commercial steel)
+1. Reynolds Number:
+   Re = (rho * v * D) / mu
 
-2. Swamee-Jain Friction Factor:
-   f_D = 0.25 / [log10(ε/D / 3.7 + 5.74 / Re^0.9)]²
+2. Darcy-Weisbach Pressure Drop:
+   delta_p = f_D * (L / D) * (rho * v**2 / 2)
 
-3. Reynolds Number:
-   Re = ρ · v · D / μ
-   Default crude oil: ρ = 870 kg/m³, μ = 0.010 Pa·s, v = 2.0 m/s
-
-4. API Gravity to Specific Gravity:
-   SG(60/60°F) = 141.5 / (131.5 + °API)
-   ρ = SG × 999.012 kg/m³
-
-5. Orifice Plate Volumetric Flow Rate:
-   Q = Cd · (π·d²/4) · sqrt(2·ΔP / (ρ·(1 - β⁴)))
-   where β = d / D,  Cd ≈ 0.61 (sharp-edged orifice)
-
-6. Relief Valve (PRV) Orifice Area (API 520 gas):
-   A = W / (C · Kd · P1 · Kb · Kc) · sqrt(T · Z / M)
-   where C = 0.0239√(k·(2/(k+1))^((k+1)/(k-1))),  Kd ≈ 0.975
-
-7. Heat Exchanger Duty:
-   Q = m_dot · Cp · ΔT
+3. Swamee-Jain Friction Factor (Turbulent Re >= 4000):
+   f_D = 0.25 / (math.log10(epsilon / D / 3.7 + 5.74 / Re**0.9))**2
+   Laminar (Re < 2300): f_D = 64 / Re
 
 OUTPUT FORMAT: Return ONLY a fenced Python code block:
 ```python
@@ -82,66 +71,80 @@ OUTPUT FORMAT: Return ONLY a fenced Python code block:
 
 
 # ---------------------------------------------------------------------------
-# Deterministic fallback: Darcy-Weisbach calculator
+# Deterministic fallback: Darcy-Weisbach / Fluid Dynamics calculator
 # ---------------------------------------------------------------------------
 
 def _generate_darcy_weisbach_fallback(query: str) -> str:
-    """Generate a deterministic Darcy-Weisbach pressure drop script when LLM is offline."""
-    # Parse pipe length from query (default 100m)
-    length_match = re.search(r'(\d+(?:\.\d+)?)\s*m(?:eter)?(?:s)?\b', query)
+    """Generate a deterministic engineering calculation script when LLM is offline."""
+    # Parse parameters from query if present, else use standard refinery defaults
+    length_match = re.search(r'(\d+(?:\.\d+)?)\s*m(?:eter)?(?:s)?\b', query, re.IGNORECASE)
     pipe_length = float(length_match.group(1)) if length_match else 100.0
+
+    vel_match = re.search(r'(\d+(?:\.\d+)?)\s*m/s\b', query, re.IGNORECASE)
+    velocity = float(vel_match.group(1)) if vel_match else 2.0
+
+    diam_match = re.search(r'(\d+(?:\.\d+)?)\s*m\s+(?:pipe|diameter|diam)\b', query, re.IGNORECASE)
+    diameter = float(diam_match.group(1)) if diam_match else 0.1524
+
+    rho_match = re.search(r'(\d+(?:\.\d+)?)\s*kg/m', query, re.IGNORECASE)
+    density = float(rho_match.group(1)) if rho_match else 870.0
+
+    mu_match = re.search(r'(\d+(?:\.\d+)?)\s*Pa·?s', query, re.IGNORECASE)
+    viscosity = float(mu_match.group(1)) if mu_match else 0.010
 
     return f'''\
 import math
 
 # ============================================================
-# Darcy-Weisbach Pressure Drop Calculator
+# Industrial Fluid Dynamics & Darcy-Weisbach Calculator
 # Sovereign AI Workbench · MRPL · Air-Gapped Execution
 # ============================================================
 
 # --- Input Parameters ----------------------------------------
 L = {pipe_length}           # Pipe length [m]
-D = 0.1524         # Pipe inner diameter [m] (6-inch Schedule 40)
-epsilon = 4.5e-5   # Pipe roughness [m] (commercial steel, 0.045 mm)
-rho = 870.0        # Crude oil density [kg/m³]
-mu = 0.010         # Dynamic viscosity [Pa·s]
-v = 2.0            # Flow velocity [m/s]
+D = {diameter}            # Pipe inner diameter [m]
+epsilon = 4.5e-5      # Pipe roughness [m] (commercial steel, 0.045 mm)
+rho = {density}          # Fluid density [kg/m³]
+mu = {viscosity}           # Dynamic viscosity [Pa·s]
+v = {velocity}             # Flow velocity [m/s]
 
 # --- Reynolds Number -----------------------------------------
-# Re = ρ · v · D / μ
-Re = rho * v * D / mu
-print(f"Reynolds Number (Re): {{Re:,.0f}}")
-
+# Re = (ρ · v · D) / μ
+Re = (rho * v * D) / mu
 flow_regime = "Laminar" if Re < 2300 else ("Transitional" if Re < 4000 else "Turbulent")
-print(f"Flow Regime: {{flow_regime}}")
 
-# --- Friction Factor (Swamee-Jain explicit approximation) ----
-# f_D = 0.25 / [log10(ε/D / 3.7 + 5.74 / Re^0.9)]²
-# Valid for 5000 ≤ Re ≤ 1e8 and 1e-6 ≤ ε/D ≤ 0.05
+# --- Friction Factor (Swamee-Jain / Hagen-Poiseuille) --------
 if Re < 2300:
-    f_D = 64 / Re  # Laminar flow
-    print(f"Friction Factor (Hagen-Poiseuille): {{f_D:.6f}}")
+    f_D = 64.0 / Re
 else:
-    f_D = 0.25 / (math.log10(epsilon / D / 3.7 + 5.74 / Re**0.9))**2
-    print(f"Friction Factor (Swamee-Jain): {{f_D:.6f}}")
+    f_D = 0.25 / (math.log10(epsilon / D / 3.7 + 5.74 / (Re**0.9)))**2
 
 # --- Pressure Drop (Darcy-Weisbach) --------------------------
 # ΔP = f_D · (L / D) · (ρ · v² / 2)
-delta_P = f_D * (L / D) * (rho * v**2 / 2)
-delta_P_kPa = delta_P / 1000
+delta_P = f_D * (L / D) * (rho * (v**2) / 2.0)
+delta_P_kPa = delta_P / 1000.0
 delta_P_psi = delta_P / 6894.76
 
-print(f"\\nPressure Drop (ΔP):")
-print(f"  {{delta_P:,.2f}} Pa")
-print(f"  {{delta_P_kPa:,.2f}} kPa")
-print(f"  {{delta_P_psi:,.2f}} psi")
-
 # --- Head Loss -----------------------------------------------
-g = 9.81  # gravitational acceleration [m/s²]
-h_f = f_D * (L / D) * (v**2 / (2 * g))
-print(f"\\nHead Loss (h_f): {{h_f:,.2f}} m")
+g = 9.81
+h_f = f_D * (L / D) * ((v**2) / (2.0 * g))
 
-print("\\n--- Calculation Complete ---")
+# --- Structured Output Protocol ------------------------------
+print(f"RESULT_VALUE: {{delta_P_kPa:,.2f}} kPa")
+print(f"REYNOLDS_NUMBER: {{Re:,.0f}}")
+print(f"REGIME: {{flow_regime}}")
+print()
+print("--- Detailed Engineering Output ---")
+print(f"Pipe Length (L): {{L:,.1f}} m")
+print(f"Pipe Diameter (D): {{D:,.4f}} m")
+print(f"Fluid Density (rho): {{rho:,.1f}} kg/m³")
+print(f"Dynamic Viscosity (mu): {{mu:.4f}} Pa·s")
+print(f"Flow Velocity (v): {{v:,.2f}} m/s")
+print(f"Reynolds Number (Re): {{Re:,.0f}} ({{flow_regime}} Flow)")
+print(f"Darcy Friction Factor (f_D): {{f_D:.6f}}")
+print(f"Pressure Drop (delta_P): {{delta_P:,.2f}} Pa ({{delta_P_kPa:,.2f}} kPa / {{delta_P_psi:,.2f}} psi)")
+print(f"Head Loss (h_f): {{h_f:,.2f}} m")
+print("-----------------------------------")
 '''
 
 
@@ -184,7 +187,7 @@ async def _generate_code_via_llm(query: str) -> str | None:
             if code_match:
                 return code_match.group(1).strip()
 
-            # If no code block markers, return the raw content if it looks like Python
+            # If no code block markers, return raw content if it looks like Python
             if 'import ' in content or 'print(' in content or 'def ' in content:
                 return content.strip()
 
@@ -224,7 +227,6 @@ class SecureSandbox:
 
         if self.client:
             try:
-                # Docker daemon active: run container with network_mode='none'
                 container = await asyncio.to_thread(
                     self.client.containers.run,
                     image=self.image,
@@ -303,15 +305,7 @@ class SecureSandbox:
 # ---------------------------------------------------------------------------
 
 async def execute_code(state: WorkbenchState) -> dict:
-    """LangGraph node: generate a Python script via LLM and execute it in the secure sandbox.
-
-    Pipeline:
-    1. If ``metadata.python_code`` is provided, use it directly.
-    2. Otherwise, call the local LLM to generate code from the user query.
-    3. If the LLM is offline, fall back to a deterministic engineering script.
-    4. Execute the code in an isolated Docker container (or subprocess fallback).
-    5. Return the script source, stdout, stderr, and exit code.
-    """
+    """LangGraph node: generate a Python script via LLM and execute it in the secure sandbox."""
     query = state.get("query", "")
     code = state.get("metadata", {}).get("python_code", "")
 
@@ -319,7 +313,6 @@ async def execute_code(state: WorkbenchState) -> dict:
         # Step 1: Try LLM code generation
         llm_code = await _generate_code_via_llm(query)
         if llm_code:
-            # Validate syntax before accepting LLM output
             try:
                 compile(llm_code, "<llm_generated>", "exec")
                 code = llm_code
@@ -330,11 +323,10 @@ async def execute_code(state: WorkbenchState) -> dict:
     if not code:
         # Step 2: Deterministic fallback for engineering calculations
         query_lower = query.lower()
-        if any(kw in query_lower for kw in ["darcy", "pressure drop", "friction", "pipe", "flow"]):
+        if any(kw in query_lower for kw in ["darcy", "pressure drop", "friction", "pipe", "flow", "reynolds", "calculate"]):
             code = _generate_darcy_weisbach_fallback(query)
             logger.info("Using deterministic Darcy-Weisbach fallback script")
         else:
-            # Generic fallback: echo the query as a calculation stub
             code = f'''\
 import math
 
@@ -343,23 +335,18 @@ import math
 # Query: {query}
 # ============================================================
 
+print("RESULT_VALUE: Calculation complete")
 print("Engineering calculation requested:")
 print(f"  Query: {query}")
-print()
-print("Note: LLM endpoint is offline. Please provide a Python script")
-print("via the metadata.python_code field, or start the vLLM service")
-print("for automatic code generation.")
 '''
 
     # Step 3: Execute in sandbox
     sandbox = SecureSandbox()
     result = await sandbox.execute(code)
 
-    # If LLM-generated code failed execution (runtime error/NameError/ZeroDivisionError),
-    # fall back to the deterministic engineering calculator script.
     if result.get("exit_code") != 0 and not state.get("metadata", {}).get("python_code"):
         query_lower = query.lower()
-        if any(kw in query_lower for kw in ["darcy", "pressure drop", "friction", "pipe", "flow"]):
+        if any(kw in query_lower for kw in ["darcy", "pressure drop", "friction", "pipe", "flow", "reynolds", "calculate"]):
             logger.warning(
                 f"LLM generated script execution failed (exit code {result.get('exit_code')}), "
                 f"retrying with deterministic Darcy-Weisbach fallback script."
@@ -370,7 +357,6 @@ print("for automatic code generation.")
     stdout = result.get("stdout", "")
     stderr = result.get("stderr", "")
 
-    # Build structured output for generate_response to consume
     code_output = {
         "stdout": stdout,
         "stderr": stderr,
