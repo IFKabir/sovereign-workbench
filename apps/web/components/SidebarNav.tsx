@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { MessageSquare, Search, FileText, Shield, Flame } from 'lucide-react';
+import { MessageSquare, Search, FileText, Shield } from 'lucide-react';
 import { getSession, type MRPLSession } from '@/lib/session';
 
 export default function SidebarNav() {
@@ -17,73 +17,76 @@ export default function SidebarNav() {
   const isDirector = session?.role === 'PLANT_DIRECTOR';
 
   return (
-    <aside className="w-64 glass-panel border-r border-sovereign-border flex flex-col z-10 h-screen sticky top-0 shrink-0">
+    <aside className="w-64 bg-[#1a1a1a] border-r border-[#8fb03e] flex flex-col z-10 h-screen sticky top-0 shrink-0 select-none font-mono">
       {/* Brand Header */}
-      <div className="p-5 border-b border-sovereign-border">
+      <div className="p-4 border-b border-[#8fb03e] bg-[#242424]">
         <div className="flex items-center space-x-3">
-          <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-accent-cyan to-accent-emerald flex items-center justify-center shadow-lg shadow-accent-cyan/20">
-            <Flame className="w-5 h-5 text-white" />
+          <div className="w-10 h-10 bg-[#57692c] border border-[#8fb03e] p-0.5 overflow-hidden flex items-center justify-center shrink-0">
+            <img src="/mrpl_logo.jpg" alt="MRPL Logo" className="w-full h-full object-contain" />
           </div>
           <div>
-            <h1 className="font-bold text-sm text-gray-100 tracking-wide">MRPL Sovereign</h1>
-            <h2 className="text-[10px] text-gray-400 mt-0.5">Intelligence Platform</h2>
+            <h1 className="font-bold text-xs text-[#e8e8e8] tracking-wider uppercase">MRPL SOVEREIGN</h1>
+            <h2 className="text-[9px] text-[#8fb03e] font-semibold">ONGC Subsidiary</h2>
           </div>
         </div>
       </div>
 
       {/* Nav Menu */}
-      <nav className="flex-1 py-4 px-3 space-y-1">
-        <p className="px-3 py-2 text-[10px] text-gray-500 uppercase tracking-widest font-semibold">Operations</p>
+      <nav className="flex-1 py-3 px-2 space-y-1">
+        <p className="px-2 py-1 text-[10px] text-[#8fb03e] uppercase tracking-widest font-bold bg-[#2b2b2b] border-l-2 border-[#8fb03e]">
+          OPERATIONS / परिचालन
+        </p>
         <Link
           href="/"
-          className={`flex items-center space-x-3 px-3 py-2.5 rounded-lg transition-colors text-sm ${
+          className={`flex items-center space-x-2.5 px-3 py-2 text-xs font-bold transition-colors border ${
             pathname === '/' || pathname === '/chat'
-              ? 'bg-accent-cyan/10 text-accent-cyan font-semibold border border-accent-cyan/20'
-              : 'text-gray-300 hover:bg-sovereign-surface hover:text-white'
+              ? 'bg-[#57692c] text-white border-[#8fb03e]'
+              : 'text-[#c4c4c4] border-transparent hover:bg-[#2b2b2b] hover:text-white'
           }`}
         >
-          <MessageSquare className="w-4.5 h-4.5" />
-          <span>AI Operational Console</span>
+          <MessageSquare className="w-4 h-4 text-[#8fb03e]" />
+          <span>[+] AI Console</span>
         </Link>
 
-        <p className="px-3 py-2 mt-4 text-[10px] text-gray-500 uppercase tracking-widest font-semibold">Engineering</p>
+        <p className="px-2 py-1 mt-4 text-[10px] text-[#8fb03e] uppercase tracking-widest font-bold bg-[#2b2b2b] border-l-2 border-[#8fb03e]">
+          ENGINEERING / इंजीनियरिंग
+        </p>
         <Link
           href="/schematic"
-          className={`flex items-center space-x-3 px-3 py-2.5 rounded-lg transition-colors text-sm ${
+          className={`flex items-center space-x-2.5 px-3 py-2 text-xs font-bold transition-colors border ${
             pathname === '/schematic'
-              ? 'bg-accent-cyan/10 text-accent-cyan font-semibold border border-accent-cyan/20'
-              : 'text-gray-300 hover:bg-sovereign-surface hover:text-white'
+              ? 'bg-[#57692c] text-white border-[#8fb03e]'
+              : 'text-[#c4c4c4] border-transparent hover:bg-[#2b2b2b] hover:text-white'
           }`}
         >
-          <Search className="w-4.5 h-4.5" />
-          <span>Schematic Inspection</span>
+          <Search className="w-4 h-4 text-[#8fb03e]" />
+          <span>[+] P&ID Inspection</span>
         </Link>
 
         {/* Audit Ledger restricted strictly to PLANT_DIRECTOR */}
         {isDirector && (
           <Link
             href="/audit"
-            className={`flex items-center space-x-3 px-3 py-2.5 rounded-lg transition-colors text-sm ${
+            className={`flex items-center space-x-2.5 px-3 py-2 text-xs font-bold transition-colors border ${
               pathname === '/audit'
-                ? 'bg-accent-cyan/10 text-accent-cyan font-semibold border border-accent-cyan/20'
-                : 'text-gray-300 hover:bg-sovereign-surface hover:text-white'
+                ? 'bg-[#57692c] text-white border-[#8fb03e]'
+                : 'text-[#c4c4c4] border-transparent hover:bg-[#2b2b2b] hover:text-white'
             }`}
           >
-            <FileText className="w-4.5 h-4.5" />
-            <span>Audit Ledger</span>
+            <FileText className="w-4 h-4 text-[#8fb03e]" />
+            <span>[+] Audit Ledger</span>
           </Link>
         )}
       </nav>
 
       {/* Footer Air-Gap Badge */}
-      <div className="p-4 border-t border-sovereign-border">
-        <div className="flex items-center space-x-2 px-3 py-2 rounded-lg bg-accent-emerald/5 border border-accent-emerald/15">
-          <Shield className="w-4 h-4 text-accent-emerald" />
+      <div className="p-3 border-t border-[#8fb03e] bg-[#242424]">
+        <div className="flex items-center space-x-2 px-2.5 py-1.5 bg-[#1a1a1a] border border-[#8fb03e]">
+          <Shield className="w-4 h-4 text-[#8fb03e]" />
           <div>
-            <p className="text-[10px] text-accent-emerald font-semibold">Zero WAN Egress</p>
-            <p className="text-[9px] text-gray-500">Air-Gapped Intranet Node</p>
+            <p className="text-[10px] text-[#8fb03e] font-bold">Zero WAN Egress</p>
+            <p className="text-[9px] text-[#c4c4c4]">Air-Gapped Intranet Node</p>
           </div>
-          <span className="w-2 h-2 rounded-full bg-accent-emerald animate-pulse ml-auto" />
         </div>
       </div>
     </aside>

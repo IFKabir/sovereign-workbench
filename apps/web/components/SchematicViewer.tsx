@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, ChangeEvent, DragEvent } from 'react';
-import { ZoomIn, ZoomOut, Maximize, Layers, Upload, Scan, FileImage, AlertTriangle, ShieldCheck, X } from 'lucide-react';
+import { ZoomIn, ZoomOut, Maximize, Layers, Upload, Scan, FileImage, X } from 'lucide-react';
 import { getApiHeaders } from '@/lib/session';
 
 export interface DetectionBox {
@@ -27,9 +27,9 @@ interface SchematicViewerProps {
 }
 
 const hazardBadges: Record<string, string> = {
-  NORMAL: 'bg-accent-emerald/10 text-accent-emerald border-accent-emerald/30',
-  WARNING: 'bg-accent-amber/10 text-accent-amber border-accent-amber/30',
-  OISD_VIOLATION: 'bg-danger/10 text-danger border-danger/30 animate-pulse',
+  NORMAL: 'bg-[#57692c] text-white border-[#8fb03e]',
+  WARNING: 'bg-amber-900/60 text-amber-300 border-amber-500',
+  OISD_VIOLATION: 'bg-red-950 text-red-300 border-red-500 animate-pulse',
 };
 
 export default function SchematicViewer({
@@ -118,7 +118,6 @@ export default function SchematicViewer({
       if (file) {
         formData.append('file', file);
       } else {
-        // Preset sample image fallback
         formData.append('preset', 'CDU_BYPASS');
       }
 
@@ -142,7 +141,7 @@ export default function SchematicViewer({
 
   // Pan / Drag handlers
   const handleMouseDown = (e: React.MouseEvent) => {
-    if (e.button !== 0) return; // Left mouse button only
+    if (e.button !== 0) return;
     setIsDragging(true);
     setDragStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
   };
@@ -162,16 +161,16 @@ export default function SchematicViewer({
   };
 
   return (
-    <div className="glass-panel flex flex-col h-full rounded-xl overflow-hidden border border-sovereign-border shadow-lg relative select-none">
+    <div className="bg-[#1a1a1a] flex flex-col h-full border-2 border-[#8fb03e] shadow-none relative select-none font-mono">
       {/* Top Header Bar */}
-      <div className="p-3.5 border-b border-sovereign-border flex justify-between items-center bg-sovereign-surface/80 flex-wrap gap-2 z-10">
+      <div className="p-3 bg-[#242424] border-b border-[#8fb03e] flex justify-between items-center flex-wrap gap-2 z-10">
         <div className="flex items-center space-x-3">
-          <Layers className="w-5 h-5 text-accent-cyan" />
+          <Layers className="w-5 h-5 text-[#8fb03e]" />
           <div>
-            <h3 className="font-mono text-sm font-bold text-gray-200">
-              {file ? file.name : 'P&ID Inspector Workspace'}
+            <h3 className="text-xs font-bold text-[#e8e8e8] tracking-wider uppercase">
+              {file ? file.name : 'P&ID INSPECTOR WORKSPACE / पीएंडआईडी निरीक्षक'}
             </h3>
-            <p className="text-[11px] text-gray-400 font-mono">
+            <p className="text-[10px] text-[#c4c4c4]">
               {file
                 ? `Size: ${(file.size / 1024).toFixed(1)} KB — Scanned Raster/Vector Drawing`
                 : 'ISA-5.1 Symbol Detection & Safety Compliance Canvas'}
@@ -190,43 +189,43 @@ export default function SchematicViewer({
 
           <button
             onClick={() => fileInputRef.current?.click()}
-            className="px-3 py-1.5 bg-sovereign-dark border border-sovereign-border text-gray-300 hover:text-white rounded-lg text-xs font-mono flex items-center transition-all"
+            className="px-3 py-1.5 bg-[#57692c] text-white border border-[#8fb03e] text-xs font-bold hover:bg-[#8fb03e] hover:text-[#1a1a1a] transition-all cursor-pointer"
           >
-            <Upload className="w-3.5 h-3.5 mr-1.5 text-accent-cyan" /> Select P&ID
+            <Upload className="w-3.5 h-3.5 mr-1.5 inline text-white" /> SELECT P&ID / फ़ाइल चुनें
           </button>
 
           {imageSrc && (
             <button
               onClick={handleAnalyzeYOLO}
               disabled={analyzing}
-              className="px-3 py-1.5 bg-gradient-to-r from-accent-cyan/20 to-accent-emerald/20 text-accent-cyan border border-accent-cyan/40 hover:bg-accent-cyan/30 rounded-lg text-xs font-mono font-bold flex items-center transition-all shadow-[0_0_10px_rgba(6,182,212,0.15)] disabled:opacity-50"
+              className="px-3 py-1.5 bg-[#57692c] text-white border border-[#8fb03e] text-xs font-bold hover:bg-[#8fb03e] hover:text-[#1a1a1a] transition-all disabled:opacity-50 cursor-pointer"
             >
-              <Scan className={`w-3.5 h-3.5 mr-1.5 ${analyzing ? 'animate-spin' : ''}`} />
-              {analyzing ? 'Analyzing...' : 'Analyze P&ID with YOLOv11s'}
+              <Scan className={`w-3.5 h-3.5 mr-1.5 inline ${analyzing ? 'animate-spin' : ''}`} />
+              {analyzing ? 'ANALYZING...' : 'ANALYZE WITH YOLOv11s'}
             </button>
           )}
 
           {/* Pan / Zoom Controls */}
           {imageSrc && (
-            <div className="flex items-center space-x-1 bg-sovereign-dark rounded-lg p-1 border border-sovereign-border">
+            <div className="flex items-center space-x-1 bg-[#1a1a1a] p-1 border border-[#8fb03e]">
               <button
                 onClick={() => setScale((s) => Math.max(0.4, s - 0.2))}
-                className="p-1 hover:bg-sovereign-surface text-gray-400 hover:text-white rounded"
+                className="p-1 hover:bg-[#57692c] text-[#c4c4c4] hover:text-white"
                 title="Zoom Out"
               >
                 <ZoomOut className="w-3.5 h-3.5" />
               </button>
-              <span className="px-1.5 font-mono text-[11px] text-gray-300 min-w-[40px] text-center">
+              <span className="px-1.5 text-[11px] text-[#e8e8e8] min-w-[40px] text-center font-bold">
                 {Math.round(scale * 100)}%
               </span>
               <button
                 onClick={() => setScale((s) => Math.min(4, s + 0.2))}
-                className="p-1 hover:bg-sovereign-surface text-gray-400 hover:text-white rounded"
+                className="p-1 hover:bg-[#57692c] text-[#c4c4c4] hover:text-white"
                 title="Zoom In"
               >
                 <ZoomIn className="w-3.5 h-3.5" />
               </button>
-              <button onClick={resetView} className="p-1 hover:bg-sovereign-surface text-gray-400 hover:text-white rounded" title="Reset View">
+              <button onClick={resetView} className="p-1 hover:bg-[#57692c] text-[#c4c4c4] hover:text-white" title="Reset View">
                 <Maximize className="w-3 h-3" />
               </button>
             </div>
@@ -243,13 +242,13 @@ export default function SchematicViewer({
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
-        className={`flex-1 overflow-hidden bg-[#05070a] relative flex items-center justify-center p-6 industrial-grid ${
+        className={`flex-1 overflow-hidden bg-[#121212] relative flex items-center justify-center p-6 industrial-grid ${
           isDragging ? 'cursor-grabbing' : imageSrc ? 'cursor-grab' : 'cursor-default'
-        } ${isDragOver ? 'border-2 border-dashed border-accent-cyan bg-accent-cyan/5' : ''}`}
+        } ${isDragOver ? 'border-2 border-dashed border-[#8fb03e] bg-[#57692c]/10' : ''}`}
       >
         {imageSrc ? (
           <div
-            className="relative transition-transform duration-75 shadow-2xl rounded bg-slate-950 border border-slate-800"
+            className="relative transition-transform duration-75 border-2 border-[#8fb03e] bg-[#1a1a1a]"
             style={{
               transform: `translate(${pan.x}px, ${pan.y}px) scale(${scale})`,
               maxWidth: '100%',
@@ -261,8 +260,14 @@ export default function SchematicViewer({
             <img
               src={imageSrc}
               alt="P&ID Diagram"
-              className="w-full h-full object-contain rounded pointer-events-none"
+              className="w-full h-full object-contain pointer-events-none"
             />
+
+            {/* GIGW Specification: Solid Green Label Band along Bottom Edge */}
+            <div className="absolute bottom-0 left-0 right-0 bg-[#57692c] border-t border-[#8fb03e] text-white px-3 py-1 text-[11px] font-bold uppercase tracking-wider flex justify-between items-center z-10">
+              <span>{file ? file.name : 'SCHEMATIC DIAGRAM DRAWING'}</span>
+              <span>ISA-5.1 COMPLIANCE CANVAS</span>
+            </div>
 
             {/* Dynamic YOLO Overlay Bounding Boxes */}
             {detections.map((box, idx) => {
@@ -275,16 +280,16 @@ export default function SchematicViewer({
               const isSelected = activeBox?.tag === box.tag && activeBox?.label === box.label;
               const borderColor =
                 box.hazard_status === 'OISD_VIOLATION'
-                  ? 'border-danger'
+                  ? 'border-red-500'
                   : box.hazard_status === 'WARNING'
-                  ? 'border-accent-amber'
-                  : 'border-accent-cyan';
+                  ? 'border-amber-500'
+                  : 'border-[#8fb03e]';
               const bgColor =
                 box.hazard_status === 'OISD_VIOLATION'
-                  ? 'bg-danger/20'
+                  ? 'bg-red-950/40'
                   : box.hazard_status === 'WARNING'
-                  ? 'bg-accent-amber/15'
-                  : 'bg-accent-cyan/15';
+                  ? 'bg-amber-950/40'
+                  : 'bg-[#57692c]/30';
 
               return (
                 <div
@@ -293,10 +298,8 @@ export default function SchematicViewer({
                     e.stopPropagation();
                     setActiveBox(box);
                   }}
-                  className={`absolute border-2 rounded cursor-pointer transition-all duration-200 ${borderColor} ${bgColor} ${
-                    isSelected
-                      ? 'ring-2 ring-white z-20 scale-105 shadow-[0_0_15px_rgba(6,182,212,0.4)]'
-                      : 'hover:scale-102 hover:bg-opacity-30 z-10'
+                  className={`absolute border-2 cursor-pointer transition-all duration-150 ${borderColor} ${bgColor} ${
+                    isSelected ? 'ring-2 ring-white z-20 scale-105' : 'hover:scale-102 z-10'
                   }`}
                   style={{
                     left: `${leftPct}%`,
@@ -305,9 +308,9 @@ export default function SchematicViewer({
                     height: `${heightPct}%`,
                   }}
                 >
-                  <div className="absolute -top-6 left-0 bg-sovereign-dark text-[10px] px-1.5 py-0.5 rounded border border-sovereign-border font-mono text-gray-200 whitespace-nowrap flex items-center shadow-md pointer-events-none">
+                  <div className="absolute -top-6 left-0 bg-[#1a1a1a] text-[10px] px-1.5 py-0.5 border border-[#8fb03e] text-[#e8e8e8] font-bold whitespace-nowrap flex items-center shadow-none pointer-events-none">
                     <span>{box.tag || box.label}</span>
-                    <span className="ml-1 text-[9px] text-gray-400">({Math.round(box.confidence * 100)}%)</span>
+                    <span className="ml-1 text-[9px] text-[#8fb03e]">({Math.round(box.confidence * 100)}%)</span>
                   </div>
                 </div>
               );
@@ -315,21 +318,21 @@ export default function SchematicViewer({
           </div>
         ) : (
           /* Clean Industrial Empty State */
-          <div className="text-center max-w-md p-8 rounded-2xl glass-panel border border-sovereign-border shadow-xl">
-            <div className="w-16 h-16 rounded-2xl bg-accent-cyan/10 border border-accent-cyan/20 flex items-center justify-center mx-auto mb-4">
-              <FileImage className="w-8 h-8 text-accent-cyan" />
+          <div className="text-center max-w-md p-8 bg-[#202020] border-2 border-[#8fb03e]">
+            <div className="w-16 h-16 bg-[#57692c] border border-[#8fb03e] flex items-center justify-center mx-auto mb-4">
+              <FileImage className="w-8 h-8 text-white" />
             </div>
-            <h3 className="text-base font-bold text-gray-100 mb-2">
+            <h3 className="text-sm font-bold text-[#e8e8e8] uppercase mb-2">
               Piping & Instrumentation Diagram (P&ID) Inspector
             </h3>
-            <p className="text-xs text-gray-400 leading-relaxed font-mono mb-6">
+            <p className="text-xs text-[#c4c4c4] leading-relaxed mb-6">
               No active engineering schematic loaded. Upload a scanned or exported drawing (.png, .jpg, .webp, .svg, .pdf) to initiate ISA-5.1 symbol detection and safety compliance checks.
             </p>
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="px-5 py-2.5 bg-gradient-to-r from-accent-cyan/20 to-accent-emerald/20 text-accent-cyan border border-accent-cyan/40 hover:bg-accent-cyan/30 rounded-xl text-xs font-mono font-bold inline-flex items-center transition-all shadow-[0_0_15px_rgba(6,182,212,0.15)]"
+              className="px-5 py-2.5 bg-[#57692c] text-white border-2 border-[#8fb03e] hover:bg-[#8fb03e] hover:text-[#1a1a1a] text-xs font-bold inline-flex items-center transition-all cursor-pointer"
             >
-              <Upload className="w-4 h-4 mr-2" /> Select P&ID Drawing
+              <Upload className="w-4 h-4 mr-2" /> SELECT P&ID DRAWING / फ़ाइल का चयन करें
             </button>
           </div>
         )}
@@ -337,68 +340,68 @@ export default function SchematicViewer({
 
       {/* Inference Status / 0 Detections Bar */}
       {analyzing && (
-        <div className="p-3 bg-sovereign-dark border-t border-sovereign-border text-center text-xs text-accent-cyan font-mono flex items-center justify-center space-x-2">
+        <div className="p-2.5 bg-[#1a1a1a] border-t border-[#8fb03e] text-center text-xs text-[#8fb03e] font-bold flex items-center justify-center space-x-2">
           <Scan className="w-4 h-4 animate-spin" />
-          <span>Running YOLOv11s inference on local GPU/CPU...</span>
+          <span>RUNNING YOLOv11s INFERENCE ON LOCAL GPU/CPU...</span>
         </div>
       )}
 
       {analyzed && !analyzing && detections.length === 0 && (
-        <div className="p-3 bg-sovereign-dark border-t border-sovereign-border text-center text-xs text-gray-400 font-mono">
+        <div className="p-2.5 bg-[#1a1a1a] border-t border-[#8fb03e] text-center text-xs text-[#c4c4c4]">
           0 ISA-5.1 symbols detected in this drawing.
         </div>
       )}
 
       {/* Component Inspection Drawer */}
       {activeBox && (
-        <div className="p-4 bg-sovereign-dark border-t border-sovereign-border">
+        <div className="p-4 bg-[#242424] border-t-2 border-[#8fb03e]">
           <div className="flex justify-between items-start">
             <div className="flex items-center space-x-3 flex-wrap gap-2">
-              <span className="font-mono text-base font-bold text-accent-cyan">{activeBox.tag || activeBox.label}</span>
+              <span className="text-sm font-bold text-[#8fb03e]">{activeBox.tag || activeBox.label}</span>
               <span
-                className={`px-2 py-0.5 text-[10px] font-mono font-bold rounded border ${
+                className={`px-2 py-0.5 text-[10px] font-bold border ${
                   hazardBadges[activeBox.hazard_status || 'NORMAL'] || hazardBadges.NORMAL
                 }`}
               >
                 {(activeBox.hazard_status || 'NORMAL').replace('_', ' ')}
               </span>
-              <span className="text-xs font-mono text-gray-400 bg-sovereign-surface px-2 py-0.5 rounded border border-gray-700">
+              <span className="text-xs text-[#c4c4c4] bg-[#1a1a1a] px-2 py-0.5 border border-neutral-700">
                 Confidence: {Math.round(activeBox.confidence * 100)}%
               </span>
-              <span className="text-xs font-mono text-gray-400">ISA-5.1 Category: {activeBox.category || 'EQUIPMENT'}</span>
-              <span className="text-xs font-mono text-gray-500">
+              <span className="text-xs text-[#c4c4c4]">Category: {activeBox.category || 'EQUIPMENT'}</span>
+              <span className="text-xs text-neutral-500">
                 Bounds: [{activeBox.bbox_normalized.y_center.toFixed(2)}, {activeBox.bbox_normalized.x_center.toFixed(2)}]
               </span>
             </div>
-            <button onClick={() => setActiveBox(null)} className="text-xs text-gray-500 hover:text-gray-300 font-mono">
+            <button onClick={() => setActiveBox(null)} className="text-xs text-neutral-400 hover:text-white font-bold">
               <X className="w-4 h-4" />
             </button>
           </div>
-          <p className="text-xs font-mono text-gray-300 mt-2 leading-relaxed bg-sovereign-surface p-2.5 rounded border border-sovereign-border">
+          <p className="text-xs text-[#e8e8e8] mt-2 leading-relaxed bg-[#1a1a1a] p-2.5 border border-[#8fb03e]">
             {activeBox.description}
           </p>
         </div>
       )}
 
       {/* Footer Status */}
-      <div className="p-2.5 border-t border-sovereign-border bg-sovereign-surface/90 flex justify-between items-center px-6 text-xs text-gray-400 font-mono">
+      <div className="p-2 bg-[#242424] border-t border-[#8fb03e] flex justify-between items-center px-4 text-xs text-[#c4c4c4]">
         <div className="flex items-center space-x-6">
           <div className="flex items-center space-x-2">
-            <div className="w-3 h-3 border border-accent-cyan bg-accent-cyan/20 rounded-sm" />
+            <div className="w-3 h-3 border border-[#8fb03e] bg-[#57692c]" />
             <span>NORMAL EQUIPMENT</span>
           </div>
           <div className="flex items-center space-x-2">
-            <div className="w-3 h-3 border border-accent-amber bg-accent-amber/20 rounded-sm" />
+            <div className="w-3 h-3 border border-amber-500 bg-amber-900/60" />
             <span>WARNING</span>
           </div>
           <div className="flex items-center space-x-2">
-            <div className="w-3 h-3 border border-danger bg-danger/20 rounded-sm" />
+            <div className="w-3 h-3 border border-red-500 bg-red-950" />
             <span>OISD VIOLATION</span>
           </div>
         </div>
 
-        <div className="text-[11px] text-gray-500">
-          {analyzed ? `${detections.length} ISA-5.1 symbols detected by YOLOv11s` : 'Click "Analyze P&ID with YOLOv11s" to run inference'}
+        <div className="text-[11px] text-[#8fb03e] font-bold">
+          {analyzed ? `${detections.length} ISA-5.1 SYMBOLS DETECTED BY YOLOv11s` : 'CLICK "ANALYZE WITH YOLOv11s" TO RUN INFERENCE'}
         </div>
       </div>
     </div>

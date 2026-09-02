@@ -334,17 +334,17 @@ export default function ChatPage() {
   };
 
   return (
-    <div className="h-full flex relative overflow-hidden p-6 gap-6">
+    <div className="h-full flex relative overflow-hidden p-6 gap-6 font-mono select-none">
       {/* Main Full-Width Chat Workspace */}
-      <div className="flex-1 flex flex-col glass-panel rounded-2xl border border-sovereign-border overflow-hidden shadow-xl">
+      <div className="flex-1 flex flex-col bg-[#202020] border-2 border-[#8fb03e] overflow-hidden shadow-none">
         {/* Workspace Header Bar */}
-        <div className="p-4 border-b border-sovereign-border bg-sovereign-surface/70 flex justify-between items-center shrink-0">
+        <div className="p-4 border-b border-[#8fb03e] bg-[#242424] flex justify-between items-center shrink-0">
           <div className="flex items-center space-x-3">
-            <Bot className="w-5 h-5 text-accent-cyan" />
+            <Bot className="w-5 h-5 text-[#8fb03e]" />
             <div>
-              <h2 className="font-semibold text-gray-200 text-sm">MRPL AI Operational Console</h2>
-              <p className="text-[10px] text-gray-400 font-mono">
-                Session ID: {threadId ? `${threadId.slice(0, 12)}...` : 'Active'}
+              <h2 className="font-bold text-[#e8e8e8] text-sm tracking-wider uppercase">MRPL AI OPERATIONAL CONSOLE</h2>
+              <p className="text-[10px] text-[#c4c4c4]">
+                SESSION ID: {threadId ? `${threadId.slice(0, 12)}...` : 'ACTIVE'}
               </p>
             </div>
           </div>
@@ -352,19 +352,19 @@ export default function ChatPage() {
           <div className="flex items-center space-x-3">
             <button
               onClick={() => setShowSchematicDrawer(!showSchematicDrawer)}
-              className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-mono border transition-colors ${
+              className={`flex items-center space-x-1.5 px-3 py-1.5 text-xs font-bold border transition-colors cursor-pointer ${
                 showSchematicDrawer
-                  ? 'bg-accent-cyan/20 text-accent-cyan border-accent-cyan/40'
-                  : 'bg-sovereign-dark border-sovereign-border text-gray-400 hover:text-white'
+                  ? 'bg-[#8fb03e] text-black border-[#8fb03e]'
+                  : 'bg-[#57692c] text-white border-[#8fb03e] hover:bg-[#8fb03e] hover:text-black'
               }`}
             >
               <Search className="w-3.5 h-3.5" />
-              <span>Open Schematic Inspector</span>
+              <span>[+] SCHEMATIC INSPECTOR DRAWER</span>
             </button>
 
-            <span className="flex items-center text-xs text-accent-emerald bg-accent-emerald/10 px-2.5 py-1 rounded-full border border-accent-emerald/20">
-              <span className="w-2 h-2 rounded-full bg-accent-emerald mr-2 animate-pulse" />
-              Grounded
+            <span className="flex items-center text-xs text-white bg-[#57692c] px-2.5 py-1 font-bold border border-[#8fb03e]">
+              <span className="w-2 h-2 rounded-full bg-[#8fb03e] mr-2 animate-pulse" />
+              GROUNDED
             </span>
           </div>
         </div>

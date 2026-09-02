@@ -2,23 +2,57 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --bg-primary: #1a1a1a;
+  --bg-nav: #57692c;
+  --bg-toolbar: #2b2b2b;
+  --accent-green: #8fb03e;
+  --text-primary: #e8e8e8;
+  --text-secondary: #c4c4c4;
+  --link: #4a9eff;
+  --logo-green: #2e7d32;
+}
+
 @layer base {
   body {
-    background-color: #0a0e1a;
-    color: #f3f4f6;
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: inherit;
   }
 }
 
 .industrial-grid {
-  background-size: 40px 40px;
-  background-image: linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 32px 32px;
+  background-image: linear-gradient(to right, rgba(143, 176, 62, 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(143, 176, 62, 0.05) 1px, transparent 1px);
 }
 
-.glass-panel {
-  background: rgba(17, 24, 39, 0.7);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+.glass-panel, .gigw-panel {
+  background: #202020;
+  border: 1px solid var(--accent-green) !important;
+  border-radius: 0px !important;
+  box-shadow: none !important;
+}
+
+.gigw-button {
+  background-color: var(--bg-nav);
+  color: #ffffff;
+  border: 1px solid var(--accent-green);
+  border-radius: 0px;
+  font-weight: 600;
+}
+.gigw-button:hover {
+  background-color: var(--accent-green);
+  color: #1a1a1a;
+}
+
+/* GIGW Link styling */
+.gigw-link {
+  color: var(--link);
+  text-decoration: underline;
+}
+.gigw-link:hover {
+  color: #ffffff;
 }
 
 /* Custom Scrollbar */
@@ -27,19 +61,21 @@
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #0a0e1a;
+  background: #1a1a1a;
 }
 ::-webkit-scrollbar-thumb {
-  background: #1f2937;
-  border-radius: 3px;
+  background: #57692c;
+  border-radius: 0px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #374151;
+  background: #8fb03e;
 }
 
 /* Markdown prose overrides for dark theme */
 .prose-invert pre {
-  background-color: #0a0e1a !important;
+  background-color: #111111 !important;
+  border: 1px solid var(--accent-green);
+  border-radius: 0px;
 }
 
 .prose-invert code {
@@ -50,9 +86,10 @@
 select {
   appearance: none;
   -webkit-appearance: none;
-  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2'%3e%3cpolyline points='6,9 12,15 18,9'%3e%3c/polyline%3e%3c/svg%3e");
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238fb03e' stroke-width='2'%3e%3cpolyline points='6,9 12,15 18,9'%3e%3c/polyline%3e%3c/svg%3e");
   background-repeat: no-repeat;
   background-position: right 0.5rem center;
   background-size: 1rem;
   padding-right: 2rem;
+  border-radius: 0px !important;
 }

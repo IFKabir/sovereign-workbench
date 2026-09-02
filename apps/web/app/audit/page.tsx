@@ -113,24 +113,24 @@ export default function AuditPage() {
   });
 
   return (
-    <div className="p-8 max-w-7xl mx-auto min-h-full flex flex-col">
-      <div className="mb-8 flex justify-between items-end">
+    <div className="p-8 max-w-7xl mx-auto min-h-full flex flex-col font-mono select-none">
+      <div className="mb-8 flex justify-between items-end flex-wrap gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-100 flex items-center">
-            <FileCode2 className="mr-3 w-8 h-8 text-accent-emerald" /> Cryptographic Audit Ledger
+          <h1 className="text-2xl font-bold text-[#e8e8e8] flex items-center tracking-wider uppercase">
+            <FileCode2 className="mr-3 w-7 h-7 text-[#8fb03e]" /> CRYPTOGRAPHIC AUDIT LEDGER / सुरक्षा लेखा बही
           </h1>
-          <p className="text-sm text-gray-400 mt-2 font-mono">
-            SHA-256 hash-chained SQLite ledger of all human & agent operations
+          <p className="text-xs text-[#c4c4c4] mt-2">
+            SHA-256 Hash-Chained SQLite Ledger of All Plant Director Operations & Multi-Agent Execution Logs
           </p>
         </div>
 
         <button
           onClick={handleVerifyChain}
           disabled={verifying}
-          className="flex items-center px-5 py-2.5 bg-accent-emerald/10 text-accent-emerald border border-accent-emerald/30 rounded-xl hover:bg-accent-emerald/20 transition-all shadow-[0_0_10px_rgba(16,185,129,0.1)] font-mono text-sm font-semibold disabled:opacity-50"
+          className="flex items-center px-5 py-2.5 bg-[#57692c] text-white border-2 border-[#8fb03e] hover:bg-[#8fb03e] hover:text-[#1a1a1a] transition-all font-bold text-xs uppercase disabled:opacity-50 cursor-pointer"
         >
           {verifying ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : <CheckCircle className="w-4 h-4 mr-2" />}
-          Verify Chain Integrity
+          VERIFY CHAIN INTEGRITY / श्रृंखला सत्यापित करें
         </button>
       </div>
 
