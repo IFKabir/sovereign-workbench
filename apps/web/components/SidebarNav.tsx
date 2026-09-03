@@ -16,11 +16,17 @@ export default function SidebarNav() {
   const currentThreadId = searchParams.get('threadId');
 
   const refreshSessions = () => {
-    setChatSessions(getChatSessions());
+    const s = getSession();
+    if (s?.userId) {
+      setChatSessions(getChatSessions(s.userId));
+    } else {
+      setChatSessions([]);
+    }
   };
 
   useEffect(() => {
-    setSession(getSession());
+    const s = getSession();
+    setSession(s);
     refreshSessions();
 
     const handleUpdate = () => refreshSessions();

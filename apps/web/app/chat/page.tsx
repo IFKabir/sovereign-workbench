@@ -130,45 +130,56 @@ export default function ChatPage() {
     setAttachedImageSrc(src);
   };
 
-  // Load chat session based on threadId parameter or active stored thread
+  // Load chat session based on threadId parameter or active stored thread strictly for current user
   useEffect(() => {
     const s = getSession();
-    if (s) {
-      setSession(s);
+    if (!s) {
+      setSession(null);
+      setMessages([]);
+      setThreadId('');
+      return;
     }
+
+    setSession(s);
+    const userId = s.userId;
 
     const paramThreadId = searchParams.get('threadId');
     if (paramThreadId) {
-      const existingSession = getChatSession(paramThreadId);
+      const existingSession = getChatSession(paramThreadId, userId);
       if (existingSession) {
         setThreadId(existingSession.threadId);
         setMessages(existingSession.messages);
       } else {
         setThreadId(paramThreadId);
-        const newSession = saveChatSession(paramThreadId, [
-          {
-            role: 'assistant',
-            content:
-              'MRPL Sovereign Intelligence Platform ready. I can assist with P&ID schematic analysis, OISD compliance standards lookup, engineering calculations, and shift handover digests. How can I help?',
-            source: 'Sovereign AI',
-          },
-        ]);
+        const newSession = saveChatSession(
+          paramThreadId,
+          [
+            {
+              role: 'assistant',
+              content:
+                'MRPL Sovereign Intelligence Platform ready. I can assist with P&ID schematic analysis, OISD compliance standards lookup, engineering calculations, and shift handover digests. How can I help?',
+              source: 'Sovereign AI',
+            },
+          ],
+          undefined,
+          userId
+        );
         setMessages(newSession.messages);
       }
     } else {
-      const activeId = getActiveThreadId();
+      const activeId = getActiveThreadId(userId);
       if (activeId) {
-        const existingSession = getChatSession(activeId);
+        const existingSession = getChatSession(activeId, userId);
         if (existingSession) {
           setThreadId(existingSession.threadId);
           setMessages(existingSession.messages);
         } else {
-          const fresh = createNewChatSession();
+          const fresh = createNewChatSession(userId);
           setThreadId(fresh.threadId);
           setMessages(fresh.messages);
         }
       } else {
-        const fresh = createNewChatSession();
+        const fresh = createNewChatSession(userId);
         setThreadId(fresh.threadId);
         setMessages(fresh.messages);
       }
@@ -185,10 +196,11 @@ export default function ChatPage() {
     }
   }, [searchParams]);
 
-  // Automatically persist messages whenever updated
+  // Automatically persist messages whenever updated strictly for current user ID
   useEffect(() => {
-    if (threadId && messages.length > 0) {
-      saveChatSession(threadId, messages);
+    const s = getSession();
+    if (s?.userId && threadId && messages.length > 0) {
+      saveChatSession(threadId, messages, undefined, s.userId);
     }
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, threadId]);

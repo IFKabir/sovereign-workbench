@@ -52,6 +52,17 @@ async def agent_query(request: AgentQueryRequest):
     await rbac_guard(request.role)
     thread_id = request.thread_id or str(uuid.uuid4())
     config = {"configurable": {"thread_id": thread_id}}
+
+    # Thread spoofing protection: Verify thread ownership if thread_id is provided
+    if request.thread_id:
+        existing_state = graph_app.get_state(config)
+        if existing_state and existing_state.values:
+            owner_id = existing_state.values.get("user_id")
+            if owner_id and owner_id != request.user_id:
+                raise HTTPException(
+                    status_code=403,
+                    detail=f"Forbidden: Thread '{request.thread_id}' is owned by user '{owner_id}' and cannot be accessed by '{request.user_id}'."
+                )
     
     initial_state = {
         "user_id": request.user_id,
@@ -257,6 +268,37 @@ async def list_tasks() -> List[Dict[str, Any]]:
     return [
         {"task_id": "t-1001", "status": "completed", "timestamp": datetime.now(timezone.utc).isoformat()}
     ]
+
+
+@router.get("/threads")
+async def list_user_threads(user_id: str, role: str = "OPERATOR") -> Dict[str, Any]:
+    """List chat threads strictly scoped to the requesting user_id."""
+    await rbac_guard(role)
+    return {"user_id": user_id, "threads": []}
+
+
+@router.get("/history")
+async def list_user_history(user_id: str, role: str = "OPERATOR") -> Dict[str, Any]:
+    """Retrieve historical query sessions strictly scoped to user_id."""
+    await rbac_guard(role)
+    try:
+        from security_audit.hash_chain import AuditLedger
+        db_path = os.environ.get("AUDIT_DB_PATH", "./data/audit_ledger.db")
+        ledger = AuditLedger(db_path=db_path)
+        user_blocks = ledger.get_user_logs(user_id)
+        logs = [
+            {
+                "block_id": b.block_id,
+                "timestamp": str(b.timestamp),
+                "query": b.query,
+                "action": b.action,
+                "status": b.status,
+            }
+            for b in user_blocks
+        ]
+        return {"user_id": user_id, "history": logs}
+    except Exception as exc:
+        return {"user_id": user_id, "history": [], "error": str(exc)}
 
 
 @router.post("/schematic/detect")

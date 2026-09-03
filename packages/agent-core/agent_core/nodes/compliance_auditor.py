@@ -6,8 +6,12 @@ logger = logging.getLogger(__name__)
 
 # High-risk action patterns that MUST trigger HITL pause regardless of classified intent
 CRITICAL_ACTION_PATTERNS = [
+    "generate a permit-to-work",
+    "generate permit-to-work",
     "generate a permit",
+    "generate permit",
     "generate a ptw",
+    "generate ptw",
     "issue ptw",
     "issue permit",
     "create permit",
