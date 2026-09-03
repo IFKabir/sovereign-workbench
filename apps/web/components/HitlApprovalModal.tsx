@@ -146,30 +146,36 @@ export default function HitlApprovalModal({
                 Mandatory Pre-flight Safety Confirmation
               </h3>
               <div className="space-y-3">
-                <label className="flex items-start space-x-3 cursor-pointer group">
+                <label className={`flex items-start space-x-3 ${canApprove ? 'cursor-pointer group' : 'cursor-not-allowed opacity-60'}`}>
                   <input
                     type="checkbox"
+                    id="chk-dbb"
+                    disabled={!canApprove}
                     checked={safetyChecks.dbb}
                     onChange={(e) => setSafetyChecks(prev => ({ ...prev, dbb: e.target.checked }))}
-                    className="mt-0.5 w-4 h-4 rounded border-sovereign-border bg-sovereign-dark accent-accent-cyan"
+                    className="mt-0.5 w-4 h-4 rounded border-sovereign-border bg-sovereign-dark accent-accent-cyan disabled:opacity-50 disabled:cursor-not-allowed"
                   />
                   <span className="text-sm text-gray-300 group-hover:text-gray-200 transition-colors">Double Block and Bleed (DBB) or physical blinding verified</span>
                 </label>
-                <label className="flex items-start space-x-3 cursor-pointer group">
+                <label className={`flex items-start space-x-3 ${canApprove ? 'cursor-pointer group' : 'cursor-not-allowed opacity-60'}`}>
                   <input
                     type="checkbox"
+                    id="chk-gastest"
+                    disabled={!canApprove}
                     checked={safetyChecks.gasTest}
                     onChange={(e) => setSafetyChecks(prev => ({ ...prev, gasTest: e.target.checked }))}
-                    className="mt-0.5 w-4 h-4 rounded border-sovereign-border bg-sovereign-dark accent-accent-cyan"
+                    className="mt-0.5 w-4 h-4 rounded border-sovereign-border bg-sovereign-dark accent-accent-cyan disabled:opacity-50 disabled:cursor-not-allowed"
                   />
                   <span className="text-sm text-gray-300 group-hover:text-gray-200 transition-colors">Atmospheric Gas Test conducted (LEL {'<'} 0%, H₂S {'<'} 10 ppm)</span>
                 </label>
-                <label className="flex items-start space-x-3 cursor-pointer group">
+                <label className={`flex items-start space-x-3 ${canApprove ? 'cursor-pointer group' : 'cursor-not-allowed opacity-60'}`}>
                   <input
                     type="checkbox"
+                    id="chk-fireequip"
+                    disabled={!canApprove}
                     checked={safetyChecks.fireEquip}
                     onChange={(e) => setSafetyChecks(prev => ({ ...prev, fireEquip: e.target.checked }))}
-                    className="mt-0.5 w-4 h-4 rounded border-sovereign-border bg-sovereign-dark accent-accent-cyan"
+                    className="mt-0.5 w-4 h-4 rounded border-sovereign-border bg-sovereign-dark accent-accent-cyan disabled:opacity-50 disabled:cursor-not-allowed"
                   />
                   <span className="text-sm text-gray-300 group-hover:text-gray-200 transition-colors">Firefighting equipment positioned on standby</span>
                 </label>
@@ -180,7 +186,7 @@ export default function HitlApprovalModal({
             <div>
               <h3 className="text-xs text-gray-400 uppercase tracking-wider mb-2 font-semibold">Authorization Notes</h3>
               <textarea
-                className="w-full bg-sovereign-dark border border-sovereign-border rounded-xl p-4 text-sm text-gray-200 focus:outline-none focus:border-accent-cyan resize-none shadow-inner transition-colors"
+                className="w-full bg-sovereign-dark border border-sovereign-border rounded-xl p-4 text-sm text-gray-200 focus:outline-none focus:border-accent-cyan resize-none shadow-inner transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 rows={2}
                 placeholder={canApprove ? 'Enter approval/rejection rationale and authorization PIN...' : 'You do not have authorization to approve this action.'}
                 value={comment}
@@ -199,13 +205,10 @@ export default function HitlApprovalModal({
               </div>
             </div>
 
-            {/* OPERATOR warning */}
+            {/* OPERATOR warning & role switcher guidance */}
             {!canApprove && (
-              <div className="flex items-center space-x-2 p-3 rounded-lg bg-danger/10 border border-danger/20">
-                <AlertTriangle className="w-4 h-4 text-danger flex-shrink-0" />
-                <p className="text-xs text-danger font-medium">
-                  Requires Safety Officer or Process Engineer Digital Sign-Off. Operator role cannot authorize this action.
-                </p>
+              <div className="p-3 rounded-lg border border-amber-900/60 bg-amber-950/20 text-amber-300 text-xs flex items-center justify-between">
+                <span>Signed in as <strong>{roleInfo.label}</strong>. Switch to <strong>Safety Officer</strong> or <strong>Process Engineer</strong> in top navigation bar to unlock authorization.</span>
               </div>
             )}
           </div>

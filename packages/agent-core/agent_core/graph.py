@@ -100,6 +100,44 @@ def hitl_gate(state: WorkbenchState) -> dict:
     return {"current_node": "hitl_gate"}
 
 
+def abort_rejected_action(state: WorkbenchState) -> dict:
+    """Handle rejected safety-critical actions by terminating the workflow."""
+    reviewer_role = state.get("user_role", "OPERATOR")
+    note = state.get("hitl_note") or "No comment provided"
+    action_type = state.get("action_type", "CRITICAL_ACTION")
+
+    abort_message = (
+        f"⛔ **WORKFLOW TERMINATED: ACTION REJECTED**\n\n"
+        f"The requested safety-critical operation (**{action_type}**) was formally **REJECTED** during Human-in-the-Loop clearance.\n\n"
+        f"- **Reviewer Role**: `{reviewer_role}`\n"
+        f"- **Authorization Decision**: `REJECTED & ESCALATED`\n"
+        f"- **Reviewer Notes**: *\"{note}\"*\n\n"
+        f"**Mandatory Safety Protocol (OISD-105)**:\n"
+        f"Permit generation has been halted. No maintenance, hot work, or equipment line-breaking may proceed without verified positive isolation."
+    )
+
+    return {
+        "final_response": abort_message,
+        "status": "REJECTED",
+        "requires_hitl": False,
+        "current_node": "abort_rejected_action",
+    }
+
+
+def route_hitl_decision(state: WorkbenchState) -> str:
+    """Route workflow based on HITL approval decision."""
+    if not state.get("hitl_approved", False):
+        return "abort_rejected_action"
+    return "log_audit"
+
+
+def route_after_log_audit(state: WorkbenchState) -> str:
+    """If workflow was rejected, terminate at END without generating response."""
+    if state.get("status") == "REJECTED" or state.get("hitl_approved") is False:
+        return END
+    return "generate_response"
+
+
 def log_audit(state: WorkbenchState) -> dict:
     """Record the interaction in the SHA-256 hash-chained audit ledger.
 
@@ -118,16 +156,18 @@ def log_audit(state: WorkbenchState) -> dict:
             models_called.append(model_name)
             token_total += count
 
+        status_str = "REJECTED" if (state.get("status") == "REJECTED" or state.get("hitl_approved") is False) else ("success" if not state.get("error") else "failure")
+
         ledger.append_log(
             user_id=state.get("user_id", "unknown"),
             role=state.get("user_role", "OPERATOR"),
             query=state.get("query", ""),
-            action=state.get("intent", "UNKNOWN"),
+            action=state.get("action_type") or state.get("intent", "UNKNOWN"),
             models_called=models_called,
             token_count=token_total or None,
-            status="success" if not state.get("error") else "failure",
+            status=status_str,
         )
-        logger.info("Audit block appended to ledger")
+        logger.info(f"Audit block ({status_str}) appended to ledger")
     except Exception as exc:
         logger.error(f"Audit logging failed: {exc}")
 
@@ -302,6 +342,7 @@ def build_workbench_graph():
     builder.add_node("execute_code", execute_code)
     builder.add_node("audit_compliance", audit_compliance)
     builder.add_node("hitl_gate", hitl_gate)
+    builder.add_node("abort_rejected_action", abort_rejected_action)
     builder.add_node("log_audit", log_audit)
     builder.add_node("generate_response", generate_response)
 
@@ -326,9 +367,28 @@ def build_workbench_graph():
         route_after_audit,
     )
 
-    # --- Linear tail -----------------------------------------------------
-    builder.add_edge("hitl_gate", "log_audit")
-    builder.add_edge("log_audit", "generate_response")
+    # --- Conditional routing after hitl_gate based on approval --------------
+    builder.add_conditional_edges(
+        "hitl_gate",
+        route_hitl_decision,
+        {
+            "abort_rejected_action": "abort_rejected_action",
+            "log_audit": "log_audit",
+        },
+    )
+
+    builder.add_edge("abort_rejected_action", "log_audit")
+
+    # --- Conditional routing after log_audit: skip LLM if rejected ---------
+    builder.add_conditional_edges(
+        "log_audit",
+        route_after_log_audit,
+        {
+            END: END,
+            "generate_response": "generate_response",
+        },
+    )
+
     builder.add_edge("generate_response", END)
 
     # --- Compile with checkpointer & HITL interrupt ----------------------

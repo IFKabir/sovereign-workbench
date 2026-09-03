@@ -216,6 +216,7 @@ async def hitl_approve(response: HITLApprovalResponse):
         config,
         {
             "hitl_approved": response.approved,
+            "hitl_note": getattr(response, "comment", None) or getattr(response, "note", None) or "No comment provided",
             "requires_hitl": False,
         },
     )

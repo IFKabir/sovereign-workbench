@@ -220,3 +220,47 @@ def test_hitl_resume_propagates_to_generate_response():
         # final_response should not be empty (either LLM answer or extractive fallback)
         assert final_response, "generate_response did not produce a final_response after HITL approval"
 
+
+def test_hitl_rejection_aborts_workflow():
+    """Verify that after interrupt_before on hitl_gate, update_state with hitl_approved=False
+    routes to abort_rejected_action -> log_audit -> END, outputting the termination banner.
+    """
+    graph = build_workbench_graph()
+    thread_id = "test-hitl-reject-001"
+    config = {"configurable": {"thread_id": thread_id}}
+
+    initial_state = {
+        "user_id": "op_1",
+        "user_role": "OPERATOR",
+        "query": "Generate a Permit-to-Work (PTW) for welding on line 101",
+        "messages": [],
+        "compliance_flags": [],
+        "requires_hitl": False,
+        "hitl_approved": None,
+        "token_counts": {},
+        "metadata": {},
+    }
+
+    import asyncio
+    try:
+        asyncio.get_event_loop().run_until_complete(
+            asyncio.to_thread(graph.invoke, initial_state, config)
+        )
+    except Exception:
+        pass
+
+    state = graph.get_state(config)
+    assert state is not None and state.next and "hitl_gate" in state.next
+
+    graph.update_state(config, {
+        "hitl_approved": False,
+        "hitl_note": "Safety hazard detected",
+        "requires_hitl": False,
+    })
+
+    resumed = graph.invoke(None, config)
+    final_state = graph.get_state(config)
+    final_response = final_state.values.get("final_response", "")
+    assert "WORKFLOW TERMINATED: ACTION REJECTED" in final_response
+    assert "Safety hazard detected" in final_response
+
