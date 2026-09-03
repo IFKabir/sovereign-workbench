@@ -287,26 +287,49 @@ async def detect_schematic_symbols(
                 raw_data = resp.json()
                 raw_detections = raw_data.get("detections", [])
                 normalized_detections = []
+
+                ISA_CLASSES = {
+                    "control_valve", "gate_valve", "check_valve", "globe_valve",
+                    "centrifugal_pump", "instrument_bubble", "valve", "pump",
+                    "transmitter", "controller", "tag"
+                }
+
                 for d in raw_detections:
                     box = d.get("bbox_normalized") or {}
-                    if not box and "box" in d:
-                        # Convert [ymin, xmin, ymax, xmax] if present
+                    if not box and "normalized_box" in d and len(d["normalized_box"]) == 4:
+                        ymin, xmin, ymax, xmax = d["normalized_box"]
+                        box = {
+                            "x_center": round((xmin + xmax) / 2.0, 4),
+                            "y_center": round((ymin + ymax) / 2.0, 4),
+                            "width": round(xmax - xmin, 4),
+                            "height": round(ymax - ymin, 4)
+                        }
+                    elif not box and "box" in d and len(d["box"]) == 4:
                         b = d["box"]
-                        if len(b) == 4:
-                            box = {
-                                "x_center": (b[1] + b[3]) / 2,
-                                "y_center": (b[0] + b[2]) / 2,
-                                "width": b[3] - b[1],
-                                "height": b[2] - b[0]
-                            }
+                        dims = raw_data.get("image_dimensions", {})
+                        w = dims.get("width", 1024)
+                        h = dims.get("height", 1024)
+                        ymin, xmin, ymax, xmax = b[0]/h, b[1]/w, b[2]/h, b[3]/w
+                        box = {
+                            "x_center": round((xmin + xmax) / 2.0, 4),
+                            "y_center": round((ymin + ymax) / 2.0, 4),
+                            "width": round(xmax - xmin, 4),
+                            "height": round(ymax - ymin, 4)
+                        }
+
+                    label = d.get("label", "symbol")
+                    is_isa = label.lower() in ISA_CLASSES
+                    hazard_status = d.get("hazard_status") or ("NORMAL" if is_isa else "UNCLASSIFIED_SYMBOL")
+                    category = d.get("category") or ("ISA-5.1" if is_isa else "SYMBOL")
+
                     normalized_detections.append({
                         "class_id": d.get("class_id", 0),
-                        "label": d.get("label", "symbol"),
-                        "tag": d.get("tag") or d.get("label", "SYMBOL").upper(),
+                        "label": label,
+                        "tag": d.get("tag") or label.upper(),
                         "confidence": d.get("confidence", 0.90),
-                        "category": d.get("category", "ISA-5.1"),
-                        "hazard_status": d.get("hazard_status", "NORMAL"),
-                        "description": d.get("description") or f"Detected ISA-5.1 symbol {d.get('label', 'equipment')}",
+                        "category": category,
+                        "hazard_status": hazard_status,
+                        "description": d.get("description") or f"Detected ISA-5.1 symbol {label}",
                         "bbox_normalized": box or {"x_center": 0.5, "y_center": 0.5, "width": 0.1, "height": 0.1}
                     })
 
@@ -314,6 +337,7 @@ async def detect_schematic_symbols(
                     "status": "success",
                     "latency_ms": raw_data.get("latency_ms", 15.0),
                     "detections_count": len(normalized_detections),
+                    "total_detections": len(normalized_detections),
                     "detections": normalized_detections
                 }
     except Exception as exc:
