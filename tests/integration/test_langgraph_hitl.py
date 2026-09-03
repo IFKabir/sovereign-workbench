@@ -221,7 +221,8 @@ def test_hitl_resume_propagates_to_generate_response():
         assert final_response, "generate_response did not produce a final_response after HITL approval"
 
 
-def test_hitl_rejection_aborts_workflow():
+@pytest.mark.asyncio
+async def test_hitl_rejection_aborts_workflow():
     """Verify that after interrupt_before on hitl_gate, update_state with hitl_approved=False
     routes to abort_rejected_action -> log_audit -> END, outputting the termination banner.
     """
@@ -241,11 +242,8 @@ def test_hitl_rejection_aborts_workflow():
         "metadata": {},
     }
 
-    import asyncio
     try:
-        asyncio.get_event_loop().run_until_complete(
-            asyncio.to_thread(graph.invoke, initial_state, config)
-        )
+        await graph.ainvoke(initial_state, config=config)
     except Exception:
         pass
 
@@ -258,7 +256,7 @@ def test_hitl_rejection_aborts_workflow():
         "requires_hitl": False,
     })
 
-    resumed = graph.invoke(None, config)
+    resumed = await graph.ainvoke(None, config=config)
     final_state = graph.get_state(config)
     final_response = final_state.values.get("final_response", "")
     assert "WORKFLOW TERMINATED: ACTION REJECTED" in final_response

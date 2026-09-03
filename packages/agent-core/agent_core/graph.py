@@ -156,7 +156,7 @@ def log_audit(state: WorkbenchState) -> dict:
             models_called.append(model_name)
             token_total += count
 
-        status_str = "REJECTED" if (state.get("status") == "REJECTED" or state.get("hitl_approved") is False) else ("success" if not state.get("error") else "failure")
+        status_str = "failure" if (state.get("status") == "REJECTED" or state.get("hitl_approved") is False or state.get("error")) else "success"
 
         ledger.append_log(
             user_id=state.get("user_id", "unknown"),
