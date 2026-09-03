@@ -70,7 +70,7 @@ def route_after_classification(state: WorkbenchState) -> str:
 
 def route_after_audit(state: WorkbenchState) -> str:
     """Decide whether HITL approval is required before proceeding."""
-    if state.get("requires_hitl"):
+    if state.get("requires_hitl") or state.get("requires_approval"):
         return "hitl_gate"
     return "log_audit"
 

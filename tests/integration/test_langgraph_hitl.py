@@ -119,6 +119,21 @@ async def test_hitl_triggers_on_modify_setpoint():
     res = await audit_compliance(state)
     assert res.get("requires_hitl") is True
 
+@pytest.mark.asyncio
+async def test_hitl_triggers_on_ptw_hot_work_without_dbb_rag_intent():
+    """Generating a PTW hot work permit without DBB must trigger HITL regardless of RAG_STANDARDS intent."""
+    state = {
+        "query": "Generate a Permit-to-Work (PTW) hot work permit for welding near the CDU pump manifold without Double Block and Bleed isolation",
+        "intent": "RAG_STANDARDS",
+        "role": "OPERATOR",
+        "user_id": "op_1"
+    }
+    res = await audit_compliance(state)
+    assert res.get("requires_hitl") is True
+    assert res.get("requires_approval") is True
+    assert res.get("action_type") == "ISSUE_PTW"
+    assert "Double Block and Bleed" in res.get("approval_reason", "")
+
 def test_langgraph_compilation():
     graph = build_workbench_graph()
     assert graph is not None

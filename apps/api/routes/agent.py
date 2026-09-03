@@ -74,17 +74,19 @@ async def agent_query(request: AgentQueryRequest):
             async for output in graph_app.astream(initial_state, config=config):
                 for node_name, node_state in output.items():
                     # Check if HITL interrupt triggered
-                    if node_name == "audit_compliance" and node_state.get("requires_hitl"):
+                    if node_name == "audit_compliance" and (node_state.get("requires_hitl") or node_state.get("requires_approval")):
                         flags = node_state.get("compliance_flags", ["CRITICAL_ACTION"])
+                        action_type = node_state.get("action_type") or (flags[0].upper() if flags else "ISSUE_PTW")
+                        reason = node_state.get("approval_reason") or f"Safety-critical action requested: '{request.query}'. Requires supervisor authorization."
                         hitl_payload = {
                             "event_type": "hitl_required",
                             "status": "WAITING_APPROVAL",
                             "requires_approval": True,
                             "thread_id": thread_id,
                             "data": {
-                                "action_type": flags[0].upper() if flags else "MODIFY_VALVE_PARAMETER",
-                                "risk_level": "HIGH",
-                                "draft_content": f"Safety-critical action requested: '{request.query}'. Requires supervisor authorization.",
+                                "action_type": action_type,
+                                "risk_level": node_state.get("risk_level", "HIGH"),
+                                "draft_content": reason,
                                 "compliance_flags": [f"Flagged requirement: {f.replace('_', ' ').title()}" for f in flags],
                                 "required_role": "SAFETY_OFFICER"
                             }
@@ -111,15 +113,17 @@ async def agent_query(request: AgentQueryRequest):
             if current_state and current_state.next and "hitl_gate" in current_state.next:
                 state_values = current_state.values
                 flags = state_values.get("compliance_flags", ["SAFETY_CRITICAL_ACTION"])
+                action_type = state_values.get("action_type") or (flags[0].upper() if flags else "ISSUE_PTW")
+                reason = state_values.get("approval_reason") or f"Requested action requires authorization: {request.query}"
                 hitl_payload = {
                     "event_type": "hitl_required",
                     "status": "WAITING_APPROVAL",
                     "requires_approval": True,
                     "thread_id": thread_id,
                     "data": {
-                        "action_type": flags[0].upper() if flags else "SAFETY_MODIFICATION",
-                        "risk_level": "HIGH",
-                        "draft_content": f"Requested action requires authorization: {request.query}",
+                        "action_type": action_type,
+                        "risk_level": state_values.get("risk_level", "HIGH"),
+                        "draft_content": reason,
                         "compliance_flags": [f"Safety requirement: {f.replace('_', ' ').title()}" for f in flags],
                         "required_role": "SAFETY_OFFICER"
                     }

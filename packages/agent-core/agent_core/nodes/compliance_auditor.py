@@ -1,103 +1,101 @@
 import logging
-import re
+from typing import Dict, Any
 from agent_core.state import WorkbenchState
 
 logger = logging.getLogger(__name__)
 
-# ---------------------------------------------------------------------------
-# Read-only intents and keywords that NEVER trigger HITL
-# ---------------------------------------------------------------------------
-
-READ_ONLY_INTENTS = {"RAG_STANDARDS", "DOC_REASONING", "GENERAL_CHAT"}
-
-READ_ONLY_KEYWORDS = [
-    "what is", "what are", "according to", "list", "inspect", "check",
-    "summarize", "explain", "identify", "describe", "show", "find",
-    "retrieve", "lookup", "tell me", "does", "is the", "how to",
-    "review", "compare", "verify",
+# High-risk action patterns that MUST trigger HITL pause regardless of classified intent
+CRITICAL_ACTION_PATTERNS = [
+    "generate a permit",
+    "generate a ptw",
+    "issue ptw",
+    "issue permit",
+    "create permit",
+    "create a ptw",
+    "hot work permit",
+    "permit-to-work",
+    "bypass relief valve",
+    "bypass valve",
+    "bypass safety",
+    "bypass the safety",
+    "bypass safety interlock",
+    "bypass the interlock",
+    "override interlock",
+    "override the interlock",
+    "modify setpoint",
+    "modify the setpoint",
+    "isolate line",
+    "isolate the line",
+    "disable alarm",
+    "disable the alarm",
+    "issue certificate",
+    "execute change"
 ]
 
-# ---------------------------------------------------------------------------
-# Action-modifying patterns that DO require HITL approval
-# These are multi-word phrases to avoid false-positive matching
-# ---------------------------------------------------------------------------
-
-ACTION_MODIFYING_PATTERNS = [
-    r"generate\s+(?:a\s+)?permit",
-    r"issue\s+(?:a\s+)?(?:ptw|permit)",
-    r"create\s+(?:a\s+)?(?:ptw|permit)",
-    r"bypass\s+(?:the\s+)?(?:relief\s+valve|safety\s+interlock|interlock)",
-    r"override\s+(?:the\s+)?interlock",
-    r"modify\s+(?:the\s+)?(?:setpoint|valve\s+parameter|parameter)",
-    r"isolate\s+(?:the\s+)?line",
-    r"disable\s+(?:the\s+)?alarm",
-    r"issue\s+(?:an?\s+)?(?:isolation\s+)?certificate",
-    r"execute\s+(?:a\s+)?change",
-    r"hot\s+work\s+permit",
-    r"confined\s+space\s+entry",
-    r"pressure\s+test\s+authorization",
-    r"modify_valve_parameter",
-    r"bypass_safety_interlock",
-    r"ptw\s+(?:exception|for)",
-    r"permit[- ]to[- ]work",
+# Explicit high-risk safety deviations
+HAZARD_OVERRIDE_PATTERNS = [
+    "without double block and bleed",
+    "without dbb",
+    "no dbb",
+    "without isolation",
+    "without positive isolation",
+    "bypass dbb"
 ]
 
-_ACTION_REGEXES = [re.compile(p, re.IGNORECASE) for p in ACTION_MODIFYING_PATTERNS]
+async def audit_compliance(state: WorkbenchState) -> Dict[str, Any]:
+    """Reviews draft outputs and queries for safety-critical patterns to trigger HITL approval.
 
-
-async def audit_compliance(state: WorkbenchState) -> dict:
-    """Reviews draft outputs for safety-critical patterns to trigger HITL approval.
-
-    HITL is triggered ONLY for explicit state-modifying actions (permit
-    generation, interlock overrides, valve parameter modifications, etc.).
-    Read-only queries (inspection, retrieval, summarization) NEVER trigger
-    HITL, regardless of the safety-related vocabulary they contain.
+    CRITICAL_ACTION_PATTERNS and HAZARD_OVERRIDE_PATTERNS ALWAYS take precedence
+    over route classification (including RAG_STANDARDS, DOC_REASONING, etc.).
     """
-    query = state.get("query", "")
-    query_lower = query.lower()
-    intent = state.get("intent", "")
+    query = (state.get("query") or "").lower().strip()
 
-    detected_flags: list[str] = []
+    # 1. First: Check for critical action patterns or hazardous isolation deviations
+    is_critical_action = any(pattern in query for pattern in CRITICAL_ACTION_PATTERNS)
+    is_hazardous_deviation = any(pattern in query for pattern in HAZARD_OVERRIDE_PATTERNS)
 
-    # ── Fast path: read-only intents never trigger HITL ──────────────────
-    if intent in READ_ONLY_INTENTS:
-        return {
-            "compliance_flags": [],
-            "requires_hitl": False,
-            "current_node": "audit_compliance",
-        }
+    # If the user is actively asking to generate/issue a permit, bypass an interlock,
+    # or perform work with missing safety isolation, HITL MUST TRIGGER:
+    if is_critical_action or is_hazardous_deviation or state.get("action_type") in ["ISSUE_PTW", "BYPASS_SAFETY_INTERLOCK"]:
+        # Exclude purely informational queries (e.g., "what is a ptw", "what are the isolation requirements")
+        informational_prefixes = ["what is", "what are", "according to", "explain", "summarize", "list"]
+        is_informational = any(query.startswith(p) for p in informational_prefixes) and not is_critical_action
 
-    # ── Fast path: if query is clearly read-only by keyword, skip HITL ──
-    if any(kw in query_lower for kw in READ_ONLY_KEYWORDS):
-        # But still check if it also matches an action pattern
-        has_action = any(rx.search(query_lower) for rx in _ACTION_REGEXES)
-        if not has_action:
+        if not is_informational:
+            approval_reason = (
+                "Safety-Critical Permit Generation Requested: Hot work requested without standard "
+                "Double Block and Bleed (DBB) positive isolation. Mandatory review required."
+                if is_hazardous_deviation
+                else f"Safety-Critical Action Requested: '{query}'. Mandatory review required."
+            )
+            action_type = (
+                "ISSUE_PTW" if ("permit" in query or "ptw" in query) else "BYPASS_SAFETY_INTERLOCK"
+            )
+            flag = "CRITICAL_ACTION_GENERATION" if is_critical_action else "HAZARD_ISOLATION_DEVIATION"
+
+            logger.info(f"HITL triggered for query: '{query[:80]}...' — flag: {flag}")
+
             return {
-                "compliance_flags": [],
-                "requires_hitl": False,
+                "requires_approval": True,
+                "requires_hitl": True,
+                "status": "WAITING_APPROVAL",
+                "risk_level": "HIGH",
+                "action_type": action_type,
+                "approval_reason": approval_reason,
+                "compliance_flags": [flag],
                 "current_node": "audit_compliance",
             }
 
-    # ── Check for explicit action-modifying patterns ────────────────────
-    for i, rx in enumerate(_ACTION_REGEXES):
-        if rx.search(query_lower):
-            flag = ACTION_MODIFYING_PATTERNS[i].replace(r"\s+", "_").replace(r"(?:a\\s+)?", "").replace(r"(?:the\\s+)?", "")
-            # Use a cleaner flag name
-            match = rx.search(query_lower)
-            if match:
-                flag = match.group(0).strip().replace(" ", "_")
-                if flag not in detected_flags:
-                    detected_flags.append(flag)
-
-    requires_hitl = len(detected_flags) > 0
-
-    if requires_hitl:
-        logger.info(f"HITL triggered for query: '{query[:80]}...' — flags: {detected_flags}")
-    else:
-        logger.debug(f"No HITL required for query: '{query[:80]}...'")
-
+    # 2. Purely read-only intent fallback
+    logger.debug(f"No HITL required for query: '{query[:80]}...'")
     return {
-        "compliance_flags": detected_flags,
-        "requires_hitl": requires_hitl,
+        "requires_approval": False,
+        "requires_hitl": False,
+        "status": "APPROVED",
+        "risk_level": "LOW",
+        "compliance_flags": [],
         "current_node": "audit_compliance",
     }
+
+# Function alias for compliance_auditor
+compliance_auditor = audit_compliance
