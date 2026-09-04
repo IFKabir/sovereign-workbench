@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { MessageSquare, Search, FileText, Shield, User, LogOut, Plus, Trash2, Clock, MessageCircle } from 'lucide-react';
+import { MessageSquare, LayoutDashboard, Activity, FileText, Shield, User, LogOut, Plus, Trash2, Clock, MessageCircle } from 'lucide-react';
 import { getSession, logoutSession, getRoleInfo, type MRPLSession } from '@/lib/session';
 import { getChatSessions, createNewChatSession, deleteChatSession, type ChatSession } from '@/lib/chatStore';
 
@@ -87,7 +87,18 @@ export default function SidebarNav() {
         <Link
           href="/"
           className={`flex items-center space-x-2.5 px-3 py-2 text-xs font-bold transition-colors border ${
-            (pathname === '/' || pathname === '/chat') && !currentThreadId
+            pathname === '/'
+              ? 'bg-[#57692c] text-white border-[#8fb03e]'
+              : 'text-[#c4c4c4] border-transparent hover:bg-[#2b2b2b] hover:text-white'
+          }`}
+        >
+          <LayoutDashboard className="w-4 h-4 text-[#8fb03e]" />
+          <span>[+] Dashboard</span>
+        </Link>
+        <Link
+          href="/chat"
+          className={`flex items-center space-x-2.5 px-3 py-2 text-xs font-bold transition-colors border ${
+            pathname === '/chat'
               ? 'bg-[#57692c] text-white border-[#8fb03e]'
               : 'text-[#c4c4c4] border-transparent hover:bg-[#2b2b2b] hover:text-white'
           }`}
@@ -100,15 +111,15 @@ export default function SidebarNav() {
           ENGINEERING / इंजीनियरिंग
         </p>
         <Link
-          href="/schematic"
+          href="/trace"
           className={`flex items-center space-x-2.5 px-3 py-2 text-xs font-bold transition-colors border ${
-            pathname === '/schematic'
+            pathname === '/trace'
               ? 'bg-[#57692c] text-white border-[#8fb03e]'
               : 'text-[#c4c4c4] border-transparent hover:bg-[#2b2b2b] hover:text-white'
           }`}
         >
-          <Search className="w-4 h-4 text-[#8fb03e]" />
-          <span>[+] P&ID Inspection</span>
+          <Activity className="w-4 h-4 text-[#8fb03e]" />
+          <span>[+] DAG Agent Trace</span>
         </Link>
 
         {/* Audit Ledger restricted strictly to PLANT_DIRECTOR */}

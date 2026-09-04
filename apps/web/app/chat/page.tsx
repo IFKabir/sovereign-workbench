@@ -21,7 +21,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
-import SchematicViewer from '@/components/SchematicViewer';
+import SchematicViewer, { type DetectionBox } from '@/components/SchematicViewer';
 import HitlApprovalModal, { RiskLevel } from '@/components/HitlApprovalModal';
 import { CitationList, type Citation } from '@/components/CitationList';
 import { getSession, getApiHeaders, type MRPLSession } from '@/lib/session';
@@ -108,7 +108,20 @@ export default function ChatPage() {
   const [showSchematicDrawer, setShowSchematicDrawer] = useState(false);
   const [attachedFile, setAttachedFile] = useState<File | null>(null);
   const [attachedImageSrc, setAttachedImageSrc] = useState<string | null>(null);
+  const [currentDetections, setCurrentDetections] = useState<DetectionBox[]>([]);
   const [expandedCode, setExpandedCode] = useState<Record<number, boolean>>({});
+
+  const handleDetectionsComplete = (dets: DetectionBox[]) => {
+    setCurrentDetections(dets);
+    setMessages((prev) => [
+      ...prev,
+      {
+        role: 'assistant',
+        content: `Schematic analyzed: ${dets.length} ISA-5.1 components detected. You can now ask questions about this diagram in the chat.`,
+        source: 'P&ID Inspector',
+      },
+    ]);
+  };
 
   const chatFileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -239,7 +252,10 @@ export default function ChatPage() {
           user_id: currentSession.userId,
           role: currentSession.role,
           thread_id: activeThreadId,
+          attached_image: currentAttachedSrc || undefined,
           image_data: currentAttachedSrc || undefined,
+          detections_summary: currentDetections.length > 0 ? currentDetections : undefined,
+          schematic_detections: currentDetections.length > 0 ? currentDetections : undefined,
         }),
       });
 
@@ -704,6 +720,7 @@ export default function ChatPage() {
               externalFile={attachedFile}
               externalImageSrc={attachedImageSrc}
               onFileChange={handleSchematicFileChange}
+              onDetectionsComplete={handleDetectionsComplete}
             />
           </div>
         </div>

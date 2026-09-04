@@ -26,6 +26,10 @@ class AgentQueryRequest(BaseModel):
     role: str = "OPERATOR"
     thread_id: Optional[str] = None
     attachments: Optional[List[str]] = None
+    attached_image: Optional[str] = None
+    image_data: Optional[str] = None
+    detections_summary: Optional[List[Dict[str, Any]]] = None
+    schematic_detections: Optional[List[Dict[str, Any]]] = None
 
 class HITLApprovalResponse(BaseModel):
     thread_id: str
@@ -64,6 +68,9 @@ async def agent_query(request: AgentQueryRequest):
                     detail=f"Forbidden: Thread '{request.thread_id}' is owned by user '{owner_id}' and cannot be accessed by '{request.user_id}'."
                 )
     
+    attached_img = request.attached_image or request.image_data
+    detections = request.detections_summary or request.schematic_detections
+
     initial_state = {
         "user_id": request.user_id,
         "user_role": request.role,
@@ -73,8 +80,14 @@ async def agent_query(request: AgentQueryRequest):
         "requires_hitl": False,
         "hitl_approved": None,
         "token_counts": {},
-        "metadata": {}
+        "metadata": {
+            "attached_image": attached_img,
+            "detections": detections,
+            "detections_summary": detections,
+        }
     }
+    if detections:
+        initial_state["pid_results"] = detections
 
     async def event_stream():
         try:

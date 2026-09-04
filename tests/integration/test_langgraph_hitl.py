@@ -253,7 +253,6 @@ async def test_hitl_rejection_aborts_workflow():
     graph.update_state(config, {
         "hitl_approved": False,
         "hitl_note": "Safety hazard detected",
-        "requires_hitl": False,
     })
 
     resumed = await graph.ainvoke(None, config=config)

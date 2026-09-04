@@ -31,14 +31,18 @@ logger = logging.getLogger(__name__)
 def reset_ephemeral_state(state: WorkbenchState) -> dict:
     """Reset ephemeral tool output keys at the start of every new query.
     
-    Prevents stale code_output, pid_results, etc. from leaking across
-    conversational turns when the LangGraph checkpointer persists state.
+    Prevents stale code_output, etc. from leaking across turns while preserving
+    turn-specific detections or metadata passed in initial state.
     """
+    meta = state.get("metadata") or {}
+    detections = state.get("pid_results") or meta.get("detections") or meta.get("detections_summary")
+    summary = state.get("pid_summary")
     return {
         "code_output": None,
         "sandbox_script": None,
         "sandbox_stdout": None,
-        "pid_results": None,
+        "pid_results": detections if detections else None,
+        "pid_summary": summary if (summary and detections) else None,
         "retrieved_context": None,
         "rag_results": None,
         "rag_context": None,
@@ -178,10 +182,11 @@ async def generate_response(state: WorkbenchState) -> dict:
     """Generate the final user-facing response using Qwen2.5-VL via vLLM.
 
     Aggregates context from preceding nodes and dynamically formats a generic prompt
-    payload for the local vLLM endpoint. Falls back to listing raw retrieved grounding chunks
-    if LLM inference is offline.
+    payload for the local vLLM endpoint. Grounded on ISA-5.1 schematic inventory,
+    OISD standards, or sandbox calculations.
     """
     import httpx
+    from agent_core.nodes.pid_analyzer import format_pid_inventory
 
     # Check for GENERAL_CHAT conversational intent
     if state.get("intent") == "GENERAL_CHAT":
@@ -200,14 +205,95 @@ async def generate_response(state: WorkbenchState) -> dict:
         }
 
     vllm_url = os.environ.get("VLLM_BASE_URL", "http://localhost:8002/v1")
-
-    # --- Build generic context block from prior nodes --------------------
-    # Only aggregate context from the node that was actually executed
-    # in this turn, based on the classified intent.
-    context_parts: list[str] = []
     intent = state.get("intent", "")
+    pid_res = state.get("pid_results")
+    pid_sum = state.get("pid_summary")
 
-    # RAG / doc context — always relevant for RAG_STANDARDS, DOC_REASONING, and as supplementary
+    # If pid_summary is not yet present but pid_results is available, format it
+    if not pid_sum and pid_res:
+        pid_sum = format_pid_inventory(pid_res if isinstance(pid_res, list) else pid_res.get("detections", []))
+
+    # Handle P&ID Schematic Reasoning Grounding
+    if intent == "VISION_SCHEMATIC" or pid_sum:
+        schematic_context = pid_sum or (format_pid_inventory(pid_res) if pid_res else "No ISA-5.1 symbols detected in the provided schematic.")
+        user_query = state.get("query", "")
+
+        pid_prompt = (
+            "You are an expert industrial instrumentation and piping engineer at MRPL.\n\n"
+            "Analyze the following P&ID schematic detection findings and answer the user's operational question accurately.\n\n"
+            "--- EXTRACTED SCHEMATIC INVENTORY (ISA-5.1) ---\n"
+            f"{schematic_context}\n\n"
+            "--- USER QUESTION ---\n"
+            f"{user_query}\n\n"
+            "Instructions:\n"
+            "1. Ground your answer directly on the detected symbols, equipment tags, and component counts listed above.\n"
+            "2. If asked about compliance (such as Double Block and Bleed or isolation), inspect whether the required redundant block valves and bleeders are present in the component list.\n"
+            "3. If the user asks for counts or specific tags, provide the exact numbers and identifiers from the inventory.\n"
+        )
+
+        image_data = (state.get("metadata") or {}).get("attached_image")
+        if image_data:
+            image_url = image_data if image_data.startswith("data:") else f"data:image/png;base64,{image_data}"
+            messages = [
+                {"role": "system", "content": "You are an expert industrial instrumentation and piping engineer at MRPL."},
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": pid_prompt},
+                        {"type": "image_url", "image_url": {"url": image_url}}
+                    ]
+                }
+            ]
+        else:
+            messages = [
+                {"role": "system", "content": "You are an expert industrial instrumentation and piping engineer at MRPL."},
+                {"role": "user", "content": pid_prompt}
+            ]
+
+        try:
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                resp = await client.post(
+                    f"{vllm_url}/chat/completions",
+                    json={
+                        "model": os.environ.get("VLLM_MODEL_NAME", "Qwen/Qwen2.5-VL-7B-Instruct"),
+                        "messages": messages,
+                        "max_tokens": 2048,
+                        "temperature": 0.3,
+                    },
+                )
+                resp.raise_for_status()
+                data = resp.json()
+                answer = data["choices"][0]["message"]["content"]
+                usage = data.get("usage", {})
+
+                token_counts = dict(state.get("token_counts") or {})
+                model_name = os.environ.get("VLLM_MODEL_NAME", "Qwen/Qwen2.5-VL-7B-Instruct")
+                token_counts[model_name] = token_counts.get(model_name, 0) + usage.get("total_tokens", 0)
+
+                return {
+                    "final_response": answer,
+                    "pid_summary": schematic_context,
+                    "token_counts": token_counts,
+                    "current_node": "generate_response",
+                }
+        except Exception as exc:
+            logger.warning(f"vLLM endpoint unavailable on port 8002 ({exc}), using fallback schematic summary.")
+            fallback = (
+                "### P&ID Schematic Reasoning & Analysis\n\n"
+                f"{schematic_context}\n\n"
+                f"**Grounding Verification for Query**: *\"{user_query}\"*\n\n"
+                "*(Answer grounded on extracted ISA-5.1 symbol inventory. Local reasoning engine in fallback mode.)*"
+            )
+            return {
+                "final_response": fallback,
+                "pid_summary": schematic_context,
+                "error": None,
+                "current_node": "generate_response",
+            }
+
+    # Standard RAG / Code Sandbox Reasoning Payload
+    context_parts: list[str] = []
+
     retrieved_ctx = state.get("retrieved_context") or state.get("rag_context")
     rag_res = state.get("rag_results")
     if intent in ("RAG_STANDARDS", "DOC_REASONING") or (not intent):
@@ -218,12 +304,6 @@ async def generate_response(state: WorkbenchState) -> dict:
             if docs:
                 context_parts.append("\n\n".join(docs))
 
-    # P&ID analysis — only when this turn classified as VISION_SCHEMATIC
-    pid_res = state.get("pid_results")
-    if intent == "VISION_SCHEMATIC" and pid_res:
-        context_parts.append(f"P&ID Analysis Results:\n{pid_res}")
-
-    # Code sandbox output — only when this turn classified as CODE_SANDBOX
     code_out = state.get("code_output")
     if intent == "CODE_SANDBOX" and code_out:
         if isinstance(code_out, dict):
@@ -237,7 +317,6 @@ async def generate_response(state: WorkbenchState) -> dict:
             if exit_code == 0 and stdout:
                 parts.append(f"Execution Output (exit code {exit_code}):\n{stdout}")
             elif exit_code != 0:
-                # Feed error context so the LLM can explain the failure
                 err_msg = stderr or stdout or "Script execution failed with no output."
                 parts.append(f"Script Execution FAILED (exit code {exit_code}):\n{err_msg}")
                 parts.append(
@@ -270,9 +349,7 @@ async def generate_response(state: WorkbenchState) -> dict:
             resp = await client.post(
                 f"{vllm_url}/chat/completions",
                 json={
-                    "model": os.environ.get(
-                        "VLLM_MODEL_NAME", "Qwen/Qwen2.5-VL-7B-Instruct"
-                    ),
+                    "model": os.environ.get("VLLM_MODEL_NAME", "Qwen/Qwen2.5-VL-7B-Instruct"),
                     "messages": messages,
                     "max_tokens": 2048,
                     "temperature": 0.3,
@@ -284,12 +361,8 @@ async def generate_response(state: WorkbenchState) -> dict:
             usage = data.get("usage", {})
 
             token_counts = dict(state.get("token_counts") or {})
-            model_name = os.environ.get(
-                "VLLM_MODEL_NAME", "Qwen/Qwen2.5-VL-7B-Instruct"
-            )
-            token_counts[model_name] = (
-                token_counts.get(model_name, 0) + usage.get("total_tokens", 0)
-            )
+            model_name = os.environ.get("VLLM_MODEL_NAME", "Qwen/Qwen2.5-VL-7B-Instruct")
+            token_counts[model_name] = token_counts.get(model_name, 0) + usage.get("total_tokens", 0)
 
             return {
                 "final_response": answer,

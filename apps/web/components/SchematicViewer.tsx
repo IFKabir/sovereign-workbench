@@ -24,6 +24,7 @@ interface SchematicViewerProps {
   externalFile?: File | null;
   externalImageSrc?: string | null;
   onFileChange?: (file: File | null, src: string | null) => void;
+  onDetectionsComplete?: (detections: DetectionBox[]) => void;
 }
 
 const hazardBadges: Record<string, string> = {
@@ -36,6 +37,7 @@ export default function SchematicViewer({
   externalFile,
   externalImageSrc,
   onFileChange,
+  onDetectionsComplete,
 }: SchematicViewerProps) {
   const [file, setFile] = useState<File | null>(externalFile || null);
   const [imageSrc, setImageSrc] = useState<string | null>(externalImageSrc || null);
@@ -129,8 +131,12 @@ export default function SchematicViewer({
 
       if (res.ok) {
         const data = await res.json();
-        setDetections(data.detections || []);
+        const detList = data.detections || [];
+        setDetections(detList);
         setAnalyzed(true);
+        if (onDetectionsComplete) {
+          onDetectionsComplete(detList);
+        }
       }
     } catch (err) {
       console.error('YOLO analysis failed:', err);

@@ -9,7 +9,8 @@ class WorkbenchState(TypedDict):
     query: str
     intent: str
     current_node: str
-    pid_results: dict | None
+    pid_results: dict | list | None
+    pid_summary: str | None
     rag_results: dict | None
     retrieved_context: str | None
     code_output: dict | None
@@ -18,6 +19,8 @@ class WorkbenchState(TypedDict):
     compliance_flags: list[str]
     requires_hitl: bool
     hitl_approved: bool | None
+    hitl_note: str | None
+    hitl_comment: str | None
     final_response: str | None
     error: str | None
     token_counts: dict[str, int]
