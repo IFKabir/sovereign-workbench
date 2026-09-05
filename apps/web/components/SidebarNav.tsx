@@ -85,26 +85,15 @@ export default function SidebarNav() {
           OPERATIONS / परिचालन
         </p>
         <Link
-          href="/"
-          className={`flex items-center space-x-2.5 px-3 py-2 text-xs font-bold transition-colors border ${
-            pathname === '/'
-              ? 'bg-[#57692c] text-white border-[#8fb03e]'
-              : 'text-[#c4c4c4] border-transparent hover:bg-[#2b2b2b] hover:text-white'
-          }`}
-        >
-          <LayoutDashboard className="w-4 h-4 text-[#8fb03e]" />
-          <span>[+] Dashboard</span>
-        </Link>
-        <Link
           href="/chat"
           className={`flex items-center space-x-2.5 px-3 py-2 text-xs font-bold transition-colors border ${
-            pathname === '/chat'
+            (pathname === '/chat' || pathname === '/')
               ? 'bg-[#57692c] text-white border-[#8fb03e]'
               : 'text-[#c4c4c4] border-transparent hover:bg-[#2b2b2b] hover:text-white'
           }`}
         >
           <MessageSquare className="w-4 h-4 text-[#8fb03e]" />
-          <span>[+] AI Console</span>
+          <span>[+] AI Console & Copilot</span>
         </Link>
 
         <p className="px-2 py-1 mt-4 text-[10px] text-[#8fb03e] uppercase tracking-widest font-bold bg-[#2b2b2b] border-l-2 border-[#8fb03e]">
