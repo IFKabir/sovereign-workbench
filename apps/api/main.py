@@ -11,7 +11,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from .config import settings
-from .routes import agent, ingestion, audit, health
+from .routes import agent, ingestion, audit, exports, health
 import httpx
 import logging
 import os
@@ -111,3 +111,4 @@ app.include_router(health.router, prefix="/health", tags=["health"])
 app.include_router(agent.router, prefix="/api/v1/agent", tags=["agent"])
 app.include_router(ingestion.router, prefix="/api/v1/ingest", tags=["ingestion"])
 app.include_router(audit.router, prefix="/api/v1/audit", tags=["audit"])
+app.include_router(exports.router, prefix="/api/v1/export", tags=["export"])

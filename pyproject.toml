@@ -22,7 +22,10 @@ dependencies = [
     "pillow",
     "httpx",
     "aiofiles",
-    "python-multipart"
+    "python-multipart",
+    "python-docx>=1.1.0",
+    "python-pptx>=1.0.0",
+    "openpyxl>=3.1.0"
 ]
 
 [project.optional-dependencies]
