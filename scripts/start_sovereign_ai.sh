@@ -33,7 +33,15 @@ pkill -f "uvicorn apps.yolo_service:app" 2>/dev/null || true
 pkill -f "uvicorn apps.api.main:app" 2>/dev/null || true
 
 # Trap process exit to cleanly terminate all background child processes
-trap 'echo -e "\n${RED}Shutting down all Sovereign AI microservices...${NC}"; kill 0' EXIT SIGINT SIGTERM
+cleanup() {
+    echo -e "\n${RED}Shutting down all Sovereign AI microservices...${NC}"
+    fuser -k -9 3000/tcp 8001/tcp 8002/tcp 8080/tcp 2>/dev/null || true
+    pkill -9 -f "apps.vllm_service" 2>/dev/null || true
+    pkill -9 -f "apps.yolo_service" 2>/dev/null || true
+    pkill -9 -f "apps.api.main" 2>/dev/null || true
+    kill 0 2>/dev/null || true
+}
+trap cleanup EXIT SIGINT SIGTERM
 
 # 1. Start / Verify Qdrant Vector DB & Sovereign Sandbox Container Image
 echo -e "\n${GREEN}[1/5] Checking Qdrant Vector Database & Docker Sandbox Image...${NC}"
@@ -47,10 +55,12 @@ if command -v docker >/dev/null 2>&1; then
     fi
 fi
 
+export VLLM_MODEL_NAME="${VLLM_MODEL_NAME:-models/Qwen2.5-VL-7B-Instruct}"
+
 # 2. Launch Local GPU LLM Engine (Port 8002)
-echo -e "\n${GREEN}[2/5] Launching GPU LLM Inference Engine (Qwen2.5 on Port 8002)...${NC}"
+echo -e "\n${GREEN}[2/5] Launching GPU LLM Inference Engine (Qwen2.5-VL-7B on Port 8002)...${NC}"
 mkdir -p logs
-PORT=8002 python -m uvicorn apps.vllm_service:app --host 0.0.0.0 --port 8002 > logs/vllm_service.log 2>&1 &
+PORT=8002 VLLM_MODEL_NAME="$VLLM_MODEL_NAME" python -m uvicorn apps.vllm_service:app --host 0.0.0.0 --port 8002 > logs/vllm_service.log 2>&1 &
 LLM_PID=$!
 
 # Wait for port 8002 to become active
@@ -74,6 +84,7 @@ sleep 2
 echo -e "\n${GREEN}[4/5] Launching FastAPI Agent Orchestrator (Port 8080)...${NC}"
 PYTHONPATH=".:packages/shared-schemas:packages/security-audit:packages/agent-core" \
 VLLM_BASE_URL=http://localhost:8002/v1 \
+VLLM_MODEL_NAME="$VLLM_MODEL_NAME" \
 QDRANT_URL=http://localhost:6333 \
 YOLO_SERVICE_URL=http://localhost:8001 \
 AUDIT_DB_PATH=./data/audit_ledger.db \

@@ -251,7 +251,7 @@ async def generate_response(state: WorkbenchState) -> dict:
             ]
 
         try:
-            async with httpx.AsyncClient(timeout=30.0) as client:
+            async with httpx.AsyncClient(timeout=60.0) as client:
                 resp = await client.post(
                     f"{vllm_url}/chat/completions",
                     json={
@@ -345,7 +345,7 @@ async def generate_response(state: WorkbenchState) -> dict:
     ]
 
     try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        async with httpx.AsyncClient(timeout=60.0) as client:
             resp = await client.post(
                 f"{vllm_url}/chat/completions",
                 json={
