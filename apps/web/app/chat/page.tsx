@@ -15,6 +15,9 @@ import {
   X,
   BookOpen,
   Image as ImageIcon,
+  Download,
+  FileSpreadsheet,
+  Presentation,
 } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import ReactMarkdown from 'react-markdown';
@@ -110,6 +113,8 @@ export default function ChatPage() {
   const [attachedImageSrc, setAttachedImageSrc] = useState<string | null>(null);
   const [currentDetections, setCurrentDetections] = useState<DetectionBox[]>([]);
   const [expandedCode, setExpandedCode] = useState<Record<number, boolean>>({});
+  const [exporting, setExporting] = useState<string | null>(null);
+  const [exportError, setExportError] = useState<string | null>(null);
 
   const handleDetectionsComplete = (dets: DetectionBox[]) => {
     setCurrentDetections(dets);
@@ -436,6 +441,62 @@ export default function ChatPage() {
     setExpandedCode((prev) => ({ ...prev, [idx]: !prev[idx] }));
   };
 
+  const handleExport = async (msg: Message, index: number, format: 'docx' | 'pptx' | 'xlsx') => {
+    const currentSession = getSession();
+    if (!currentSession || exporting) return;
+
+    const precedingQuery = [...messages.slice(0, index)].reverse().find((item) => item.role === 'user');
+    const title = precedingQuery?.content.slice(0, 100) || 'Sovereign Workbench Response';
+    const key = `${index}-${format}`;
+    setExporting(key);
+    setExportError(null);
+
+    try {
+      const response = await fetch('/api/v1/export', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getApiHeaders(),
+        },
+        body: JSON.stringify({
+          format,
+          title,
+          content: msg.content,
+          user_id: currentSession.userId,
+          role: currentSession.role,
+          source: msg.source || 'Sovereign AI',
+          thread_id: threadId,
+          citations: msg.citations || [],
+          metrics: msg.codeData?.metrics || [],
+          calculation_output: msg.codeData?.stdout || '',
+          calculation_script: msg.codeData?.script || '',
+        }),
+      });
+      if (!response.ok) {
+        const detail = await response.text().catch(() => '');
+        throw new Error(detail || `Export failed with HTTP ${response.status}`);
+      }
+
+      const blob = await response.blob();
+      const disposition = response.headers.get('Content-Disposition') || '';
+      const match = disposition.match(/filename="([^"]+)"/i);
+      const filename = match?.[1] || `sovereign-export.${format}`;
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = filename;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Export Error:', error);
+      setExportError('Unable to create the requested file. Check that the API export dependencies are installed.');
+    } finally {
+      setExporting(null);
+    }
+  };
+
   return (
     <div className="h-full flex relative overflow-hidden p-6 gap-6 font-mono select-none">
       {/* Main Full-Width Chat Workspace */}
@@ -624,10 +685,47 @@ export default function ChatPage() {
                       </div>
                     );
                   })()}
+
+                  {msg.role === 'assistant' && msg.content.trim() && (
+                    <div className="mt-4 pt-3 border-t border-[#57692c] flex flex-wrap items-center gap-2">
+                      <span className="text-[9px] text-[#c4c4c4] font-bold uppercase tracking-wider mr-1">
+                        Export response
+                      </span>
+                      {([
+                        { format: 'docx' as const, label: 'DOCX', Icon: FileText },
+                        { format: 'pptx' as const, label: 'PPTX', Icon: Presentation },
+                        { format: 'xlsx' as const, label: 'XLSX', Icon: FileSpreadsheet },
+                      ]).map(({ format, label, Icon }) => {
+                        const exportKey = `${i}-${format}`;
+                        return (
+                          <button
+                            key={format}
+                            onClick={() => handleExport(msg, i, format)}
+                            disabled={Boolean(exporting)}
+                            className="flex items-center gap-1 px-2 py-1 text-[9px] font-bold border border-[#8fb03e] text-[#8fb03e] hover:bg-[#57692c] hover:text-white disabled:opacity-50 transition-colors"
+                            title={`Download this response as ${label}`}
+                          >
+                            {exporting === exportKey ? (
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                            ) : (
+                              <Icon className="w-3 h-3" />
+                            )}
+                            {label}
+                            <Download className="w-2.5 h-2.5" />
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               </div>
             );
           })}
+          {exportError && (
+            <div className="text-xs text-red-400 border border-red-700 bg-red-950/30 p-2" role="alert">
+              {exportError}
+            </div>
+          )}
           {isProcessing && (
             <div className="flex items-center space-x-2 text-[#8fb03e] text-xs p-3 font-bold">
               <Loader2 className="w-4 h-4 animate-spin" />

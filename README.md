@@ -71,6 +71,7 @@ The **Sovereign On-Premise Agentic AI Workbench** is an enterprise-grade, 100% a
 ### 📐 KaTeX LaTeX Math & Accordion Citations
 - Render LaTeX math blocks ($\Delta P = f_D \cdot \frac{L}{D} \cdot \frac{\rho v^2}{2}$) cleanly inside chat bubbles.
 - Governing standards citations (OISD-118, OISD-105, API-520) render as collapsible horizontal cards with match percentage badges and expandable text excerpts.
+- Assistant responses can be downloaded as formatted Word (`.docx`), PowerPoint (`.pptx`), or Excel (`.xlsx`) deliverables. Exports include available citations, engineering metrics, calculation output, and audit context and are generated in memory without server-side document persistence.
 
 ### 🔒 Human-In-The-Loop (HITL) Permit Sign-Off Modal
 - Operational safety actions (e.g. issuing Hot Work permits or modifying interlock setpoints) pause execution until reviewed by a `SAFETY_OFFICER` or `PROCESS_ENGINEER`.
@@ -156,6 +157,8 @@ bash scripts/start_sovereign_ai.sh
 - **GPU 7B LLM Engine:** `http://localhost:8002/v1`
 - **YOLO Vision Service:** `http://localhost:8001`
 - **Qdrant Vector DB:** `http://localhost:6333`
+
+The chat response toolbar provides DOCX, PPTX, and XLSX download controls. Integrations can also call `POST /api/v1/export` with `format`, `title`, `content`, `user_id`, and `role`; optional fields include `citations`, `metrics`, `calculation_output`, `calculation_script`, and `thread_id`.
 
 ---
 
