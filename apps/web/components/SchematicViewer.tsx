@@ -275,37 +275,41 @@ export default function SchematicViewer({
               <span>ISA-5.1 COMPLIANCE CANVAS</span>
             </div>
 
-            {/* Dynamic YOLO Overlay Bounding Boxes */}
-            {detections.map((box, idx) => {
+            {/* Dynamic YOLO Overlay Bounding Boxes — Filtered & Clean */}
+            {detections
+              .filter((box) => box.confidence >= 0.30)
+              .sort((a, b) => b.confidence - a.confidence)
+              .slice(0, 20)
+              .map((box, idx) => {
               const { x_center, y_center, width, height } = box.bbox_normalized;
               const leftPct = (x_center - width / 2) * 100;
               const topPct = (y_center - height / 2) * 100;
               const widthPct = width * 100;
               const heightPct = height * 100;
 
-              const isSelected = activeBox?.tag === box.tag && activeBox?.label === box.label;
+              const isSelected = activeBox?.tag === box.tag && activeBox?.label === box.label && activeBox?.confidence === box.confidence;
+              const confPct = Math.round(box.confidence * 100);
               const borderColor =
                 box.hazard_status === 'OISD_VIOLATION'
                   ? 'border-red-500'
                   : box.hazard_status === 'WARNING'
-                  ? 'border-amber-500'
+                  ? 'border-amber-400'
                   : 'border-[#8fb03e]';
-              const bgColor =
-                box.hazard_status === 'OISD_VIOLATION'
-                  ? 'bg-red-950/40'
-                  : box.hazard_status === 'WARNING'
-                  ? 'bg-amber-950/40'
-                  : 'bg-[#57692c]/30';
+
+              // Alternate label position: top for even indices, bottom for odd to reduce overlap
+              const labelPos = idx % 2 === 0 ? '-top-5' : '-bottom-5';
 
               return (
                 <div
-                  key={idx}
+                  key={`det-${idx}-${box.label}-${confPct}`}
                   onClick={(e) => {
                     e.stopPropagation();
-                    setActiveBox(box);
+                    setActiveBox(isSelected ? null : box);
                   }}
-                  className={`absolute border-2 cursor-pointer transition-all duration-150 ${borderColor} ${bgColor} ${
-                    isSelected ? 'ring-2 ring-white z-20 scale-105' : 'hover:scale-102 z-10'
+                  className={`absolute cursor-pointer transition-all duration-150 border ${borderColor} ${
+                    isSelected
+                      ? 'ring-2 ring-white z-30 bg-white/10 border-2'
+                      : 'hover:border-2 hover:bg-white/5 z-10'
                   }`}
                   style={{
                     left: `${leftPct}%`,
@@ -314,9 +318,15 @@ export default function SchematicViewer({
                     height: `${heightPct}%`,
                   }}
                 >
-                  <div className="absolute -top-6 left-0 bg-[#1a1a1a] text-[10px] px-1.5 py-0.5 border border-[#8fb03e] text-[#e8e8e8] font-bold whitespace-nowrap flex items-center shadow-none pointer-events-none">
-                    <span>{box.tag || box.label}</span>
-                    <span className="ml-1 text-[9px] text-[#8fb03e]">({Math.round(box.confidence * 100)}%)</span>
+                  {/* Compact label — always visible */}
+                  <div
+                    className={`absolute ${labelPos} left-0 px-1 py-px text-[8px] font-bold whitespace-nowrap pointer-events-none bg-[#1a1a1a]/90 text-[#e8e8e8] border ${
+                      isSelected
+                        ? 'border-white text-white'
+                        : 'border-[#8fb03e]/60'
+                    }`}
+                  >
+                    {box.label.replace(/_/g, ' ')} <span className="text-[#8fb03e]">{confPct}%</span>
                   </div>
                 </div>
               );

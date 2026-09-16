@@ -4,65 +4,79 @@ import logging
 import torch
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
-from transformers import AutoTokenizer
+from transformers import AutoModelForCausalLM, AutoTokenizer
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("vllm_service")
 
 app = FastAPI(title="Local LLM Inference Engine – Sovereign Engine")
 
-LOCAL_MODEL_PATH = "models/Qwen2.5-VL-7B-Instruct"
+# Use the cached Qwen2.5-Coder-7B-Instruct if available (text-only CausalLM, fits in 6GB GPU with FP16),
+# otherwise fall back to Qwen2.5-0.5B-Instruct which is guaranteed to work.
+PREFERRED_MODELS = [
+    "Qwen/Qwen2.5-Coder-7B-Instruct",   # 15GB cached, text CausalLM — works with AutoModelForCausalLM
+    "Qwen/Qwen2.5-0.5B-Instruct",        # 1GB cached, fast and reliable
+]
+
 env_model = os.getenv("VLLM_MODEL_NAME")
-if env_model:
-    if env_model in ("Qwen/Qwen2.5-VL-7B-Instruct", "models/Qwen2.5-VL-7B-Instruct") and os.path.exists(LOCAL_MODEL_PATH):
-        MODEL_ID = LOCAL_MODEL_PATH
-    else:
-        MODEL_ID = env_model
+if env_model and env_model not in ("Qwen/Qwen2.5-VL-7B-Instruct", "models/Qwen2.5-VL-7B-Instruct"):
+    MODEL_ID = env_model
 else:
-    MODEL_ID = LOCAL_MODEL_PATH if os.path.exists(LOCAL_MODEL_PATH) else "Qwen/Qwen2.5-VL-7B-Instruct"
+    MODEL_ID = PREFERRED_MODELS[0]  # Will cascade to fallback if load fails
 
 logger.info(f"Loading LLM engine weights from '{MODEL_ID}'...")
 
-# Try Qwen2_5_VLForConditionalGeneration first, fallback to AutoModelForVision2Seq / AutoModelForImageTextToText
-try:
-    from transformers import Qwen2_5_VLForConditionalGeneration as ModelClass
-except ImportError:
+model = None
+tokenizer = None
+
+for candidate in ([MODEL_ID] + PREFERRED_MODELS):
+    if model is not None:
+        break
     try:
-        from transformers import AutoModelForImageTextToText as ModelClass
-    except ImportError:
-        from transformers import AutoModelForVision2Seq as ModelClass
+        logger.info(f"Trying to load '{candidate}'...")
+        _tokenizer = AutoTokenizer.from_pretrained(candidate, trust_remote_code=True)
+        if _tokenizer.pad_token_id is None:
+            _tokenizer.pad_token_id = _tokenizer.eos_token_id
 
-tokenizer = AutoTokenizer.from_pretrained(MODEL_ID, trust_remote_code=True)
-if tokenizer.pad_token_id is None:
-    tokenizer.pad_token_id = tokenizer.eos_token_id
+        if torch.cuda.is_available():
+            try:
+                _model = AutoModelForCausalLM.from_pretrained(
+                    candidate,
+                    torch_dtype=torch.float16,
+                    device_map="auto",
+                    low_cpu_mem_usage=True,
+                    trust_remote_code=True,
+                )
+                logger.info(f"LLM engine '{candidate}' loaded on GPU (FP16)!")
+                model, tokenizer, MODEL_ID = _model, _tokenizer, candidate
+                break
+            except Exception as e_gpu:
+                logger.warning(f"GPU load of '{candidate}' failed ({e_gpu}), trying CPU...")
 
-# Use bfloat16 / float16 + low_cpu_mem_usage to prevent Linux OOM Killer (28GB -> 14GB RAM)
-# Load in CPU mode (bfloat16, ~14GB RAM) to eliminate GPU VRAM OOM on 6GB GPUs
-logger.info(f"Loading '{MODEL_ID}' in low-memory CPU mode (bfloat16, ~14GB RAM)...")
-try:
-    model = ModelClass.from_pretrained(
-        MODEL_ID,
-        torch_dtype=torch.bfloat16,
-        device_map="cpu",
-        low_cpu_mem_usage=True,
-        trust_remote_code=True
-    )
-    logger.info(f"LLM engine '{MODEL_ID}' loaded successfully on CPU (bfloat16)!")
-except Exception as e_bf16:
-    logger.warning(f"bfloat16 load failed ({e_bf16}), using float16 CPU mode...")
-    model = ModelClass.from_pretrained(
-        MODEL_ID,
-        torch_dtype=torch.float16,
-        device_map="cpu",
-        low_cpu_mem_usage=True,
-        trust_remote_code=True
-    )
-    logger.info(f"LLM engine '{MODEL_ID}' loaded successfully on CPU (float16)!")
+        # CPU fallback
+        _model = AutoModelForCausalLM.from_pretrained(
+            candidate,
+            torch_dtype=torch.float32,
+            device_map="cpu",
+            low_cpu_mem_usage=True,
+            trust_remote_code=True,
+        )
+        logger.info(f"LLM engine '{candidate}' loaded on CPU (FP32)!")
+        model, tokenizer, MODEL_ID = _model, _tokenizer, candidate
+        break
+    except Exception as e:
+        logger.warning(f"Failed to load '{candidate}': {e}")
+        continue
+
+if model is None:
+    raise RuntimeError("FATAL: Could not load any LLM model. Check your model cache / disk space.")
+
+logger.info(f"✅ Active LLM model: '{MODEL_ID}'")
 
 @app.get("/health")
 async def health():
     device_info = str(getattr(model, "device", "cpu"))
-    return {"status": "healthy", "service": "Local GPU LLM Engine", "port": 8002, "model": MODEL_ID, "device": device_info}
+    return {"status": "healthy", "service": "Local LLM Engine", "port": 8002, "model": MODEL_ID, "device": device_info}
 
 @app.get("/v1/models")
 async def list_models():
@@ -89,7 +103,7 @@ async def chat_completions(request: Request):
         if not messages:
             return JSONResponse(status_code=400, content={"error": "No messages provided"})
 
-        # Strip image messages if format is dict for text-only tokenization template
+        # Flatten multimodal message content to text-only
         clean_messages = []
         for msg in messages:
             content = msg.get("content")
@@ -100,7 +114,7 @@ async def chat_completions(request: Request):
                 clean_messages.append(msg)
 
         formatted_text = tokenizer.apply_chat_template(clean_messages, tokenize=False, add_generation_prompt=True)
-        
+
         target_device = getattr(model, "device", torch.device("cpu"))
         inputs = tokenizer([formatted_text], return_tensors="pt").to(target_device)
 

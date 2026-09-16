@@ -26,6 +26,38 @@ else:
 logger.info(f"Initializing YOLOv11s service with: {model_path}")
 model = YOLO(model_path)
 
+
+def _iou(box_a: list[float], box_b: list[float]) -> float:
+    """Compute IoU between two [x1, y1, x2, y2] boxes."""
+    x1 = max(box_a[0], box_b[0])
+    y1 = max(box_a[1], box_b[1])
+    x2 = min(box_a[2], box_b[2])
+    y2 = min(box_a[3], box_b[3])
+    inter = max(0, x2 - x1) * max(0, y2 - y1)
+    area_a = (box_a[2] - box_a[0]) * (box_a[3] - box_a[1])
+    area_b = (box_b[2] - box_b[0]) * (box_b[3] - box_b[1])
+    union = area_a + area_b - inter
+    return inter / union if union > 0 else 0.0
+
+
+def _nms_filter(detections: list[dict], iou_threshold: float = 0.5) -> list[dict]:
+    """Secondary Python-level NMS: remove overlapping duplicates, keep higher confidence."""
+    if not detections:
+        return detections
+    # Sort by confidence descending
+    sorted_dets = sorted(detections, key=lambda d: d["confidence"], reverse=True)
+    keep = []
+    for det in sorted_dets:
+        should_keep = True
+        for kept in keep:
+            if _iou(det["box"], kept["box"]) > iou_threshold:
+                should_keep = False
+                break
+        if should_keep:
+            keep.append(det)
+    return keep
+
+
 @app.get("/health")
 def health():
     return {
@@ -49,8 +81,8 @@ async def detect(file: UploadFile = File(None), image_path: str = Form(None)):
 
     width, height = image.size
 
-    # Run inference at diagram resolution with balanced threshold (0.15)
-    results = model(image, imgsz=1024, conf=0.15)
+    # Run inference with higher confidence threshold + NMS IoU filtering
+    results = model(image, imgsz=1024, conf=0.40, iou=0.45)
     
     detections = []
     for r in results:
@@ -80,6 +112,12 @@ async def detect(file: UploadFile = File(None), image_path: str = Form(None)):
                 ],
                 "bbox_normalized": bbox_norm
             })
+
+    # Secondary Python-level NMS to remove remaining overlaps
+    detections = _nms_filter(detections, iou_threshold=0.5)
+
+    # Cap at 25 max detections, sorted by confidence
+    detections = detections[:25]
 
     elapsed_ms = (time.time() - start_time) * 1000
 

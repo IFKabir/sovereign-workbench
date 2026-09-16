@@ -34,14 +34,17 @@ pkill -f "uvicorn apps.api.main:app" 2>/dev/null || true
 
 # Trap process exit to cleanly terminate all background child processes
 cleanup() {
+    trap - EXIT SIGINT SIGTERM  # Disable trap to prevent recursive calls
     echo -e "\n${RED}Shutting down all Sovereign AI microservices...${NC}"
-    fuser -k -9 3000/tcp 8001/tcp 8002/tcp 8080/tcp 2>/dev/null || true
     pkill -9 -f "apps.vllm_service" 2>/dev/null || true
     pkill -9 -f "apps.yolo_service" 2>/dev/null || true
     pkill -9 -f "apps.api.main" 2>/dev/null || true
-    kill 0 2>/dev/null || true
+    fuser -k -9 3000/tcp 8001/tcp 8002/tcp 8080/tcp 2>/dev/null || true
+    wait 2>/dev/null
+    echo -e "${GREEN}All services stopped.${NC}"
+    exit 0
 }
-trap cleanup EXIT SIGINT SIGTERM
+trap cleanup SIGINT SIGTERM
 
 # 1. Start / Verify Qdrant Vector DB & Sovereign Sandbox Container Image
 echo -e "\n${GREEN}[1/5] Checking Qdrant Vector Database & Docker Sandbox Image...${NC}"
@@ -55,7 +58,7 @@ if command -v docker >/dev/null 2>&1; then
     fi
 fi
 
-export VLLM_MODEL_NAME="${VLLM_MODEL_NAME:-models/Qwen2.5-VL-7B-Instruct}"
+export VLLM_MODEL_NAME="${VLLM_MODEL_NAME:-Qwen/Qwen2.5-Coder-7B-Instruct}"
 
 # 2. Launch Local GPU LLM Engine (Port 8002)
 echo -e "\n${GREEN}[2/5] Launching GPU LLM Inference Engine (Qwen2.5-VL-7B on Port 8002)...${NC}"
