@@ -19,6 +19,7 @@ echo -e "${NC}"
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT"
+echo -e "Repository: ${REPO_ROOT}"
 
 # Ensure virtual environment is active
 if [ -d "$REPO_ROOT/.venv" ]; then
@@ -58,10 +59,14 @@ if command -v docker >/dev/null 2>&1; then
     fi
 fi
 
-export VLLM_MODEL_NAME="${VLLM_MODEL_NAME:-Qwen/Qwen2.5-Coder-7B-Instruct}"
+export VLLM_MODEL_NAME="HuggingFaceTB/SmolLM2-135M-Instruct"
+export VLLM_DEVICE="cpu"
+export CUDA_VISIBLE_DEVICES=""
 
-# 2. Launch Local GPU LLM Engine (Port 8002)
-echo -e "\n${GREEN}[2/5] Launching GPU LLM Inference Engine (Qwen2.5-VL-7B on Port 8002)...${NC}"
+# 2. Launch Local CPU LLM Engine (Port 8002)
+echo -e "\n${GREEN}[2/5] Launching CPU LLM Inference Engine on Port 8002...${NC}"
+echo -e "    Model: ${VLLM_MODEL_NAME}"
+echo -e "    Device: ${VLLM_DEVICE}"
 mkdir -p logs
 PORT=8002 VLLM_MODEL_NAME="$VLLM_MODEL_NAME" python -m uvicorn apps.vllm_service:app --host 0.0.0.0 --port 8002 > logs/vllm_service.log 2>&1 &
 LLM_PID=$!
@@ -88,6 +93,7 @@ echo -e "\n${GREEN}[4/5] Launching FastAPI Agent Orchestrator (Port 8080)...${NC
 PYTHONPATH=".:packages/shared-schemas:packages/security-audit:packages/agent-core" \
 VLLM_BASE_URL=http://localhost:8002/v1 \
 VLLM_MODEL_NAME="$VLLM_MODEL_NAME" \
+VLLM_DEVICE="$VLLM_DEVICE" \
 QDRANT_URL=http://localhost:6333 \
 YOLO_SERVICE_URL=http://localhost:8001 \
 AUDIT_DB_PATH=./data/audit_ledger.db \
@@ -110,7 +116,7 @@ echo -e "  🌟 ALL MICROSERVICES & AGENTIC AI ENGINES RUNNING AT FULL POTENTIAL
 echo -e "========================================================================"
 echo -e "  💻 Web Interface (Industrial UI): ${GREEN}http://localhost:3000${NC}"
 echo -e "  ⚙️  API Orchestrator Endpoint:    ${GREEN}http://localhost:8080${NC}"
-echo -e "  🧠 GPU LLM Inference Engine:    ${GREEN}http://localhost:8002/v1${NC}"
+echo -e "  🧠 CPU LLM Inference Engine:    ${GREEN}http://localhost:8002/v1${NC}"
 echo -e "  👁️  YOLOv11s Vision Service:      ${GREEN}http://localhost:8001${NC}"
 echo -e "  🗄️  Qdrant Vector Storage:       ${GREEN}http://localhost:6333${NC}"
 echo -e "========================================================================"

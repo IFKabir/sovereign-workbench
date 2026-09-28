@@ -13,16 +13,15 @@ app = FastAPI(title="Local LLM Inference Engine – Sovereign Engine")
 
 # Use the cached Qwen2.5-Coder-7B-Instruct if available (text-only CausalLM, fits in 6GB GPU with FP16),
 # otherwise fall back to Qwen2.5-0.5B-Instruct which is guaranteed to work.
-PREFERRED_MODELS = [
-    "Qwen/Qwen2.5-Coder-7B-Instruct",   # 15GB cached, text CausalLM — works with AutoModelForCausalLM
-    "Qwen/Qwen2.5-0.5B-Instruct",        # 1GB cached, fast and reliable
-]
+PREFERRED_MODELS = ["HuggingFaceTB/SmolLM2-135M-Instruct"]
 
 env_model = os.getenv("VLLM_MODEL_NAME")
-if env_model and env_model not in ("Qwen/Qwen2.5-VL-7B-Instruct", "models/Qwen2.5-VL-7B-Instruct"):
+if env_model:
     MODEL_ID = env_model
 else:
-    MODEL_ID = PREFERRED_MODELS[0]  # Will cascade to fallback if load fails
+    MODEL_ID = PREFERRED_MODELS[0]
+
+use_gpu = os.getenv("VLLM_DEVICE", "cpu").lower() in {"gpu", "cuda"} and torch.cuda.is_available()
 
 logger.info(f"Loading LLM engine weights from '{MODEL_ID}'...")
 
@@ -38,7 +37,7 @@ for candidate in ([MODEL_ID] + PREFERRED_MODELS):
         if _tokenizer.pad_token_id is None:
             _tokenizer.pad_token_id = _tokenizer.eos_token_id
 
-        if torch.cuda.is_available():
+        if use_gpu:
             try:
                 _model = AutoModelForCausalLM.from_pretrained(
                     candidate,
@@ -72,6 +71,7 @@ if model is None:
     raise RuntimeError("FATAL: Could not load any LLM model. Check your model cache / disk space.")
 
 logger.info(f"✅ Active LLM model: '{MODEL_ID}'")
+model.eval()
 
 @app.get("/health")
 async def health():
@@ -97,7 +97,7 @@ async def chat_completions(request: Request):
     try:
         data = await request.json()
         messages = data.get("messages", [])
-        max_tokens = data.get("max_tokens", 1024)
+        max_tokens = min(int(data.get("max_tokens", 512)), 512)
         temperature = float(data.get("temperature", 0.1))
 
         if not messages:
@@ -113,10 +113,16 @@ async def chat_completions(request: Request):
             else:
                 clean_messages.append(msg)
 
-        formatted_text = tokenizer.apply_chat_template(clean_messages, tokenize=False, add_generation_prompt=True)
+        try:
+            formatted_text = tokenizer.apply_chat_template(clean_messages, tokenize=False, add_generation_prompt=True)
+        except (AttributeError, ValueError, KeyError):
+            formatted_text = "\n".join(
+                f"{message['role'].capitalize()}: {message['content']}"
+                for message in clean_messages
+            ) + "\nAssistant:"
 
-        target_device = getattr(model, "device", torch.device("cpu"))
-        inputs = tokenizer([formatted_text], return_tensors="pt").to(target_device)
+        target_device = next(model.parameters()).device
+        inputs = tokenizer([formatted_text], return_tensors="pt", truncation=True, max_length=2048).to(target_device)
 
         do_sample = (temperature > 0.0)
         gen_kwargs = {
@@ -127,7 +133,7 @@ async def chat_completions(request: Request):
         if do_sample:
             gen_kwargs["temperature"] = temperature
 
-        with torch.no_grad():
+        with torch.inference_mode():
             outputs = model.generate(**inputs, **gen_kwargs)
 
         prompt_len = inputs.input_ids.shape[1]

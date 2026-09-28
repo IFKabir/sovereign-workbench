@@ -4,6 +4,7 @@ from pathlib import Path
 from agent_core.state import WorkbenchState
 
 logger = logging.getLogger(__name__)
+os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
 # Lazy loaded SentenceTransformer model instance
 _embedder_cache = None
@@ -16,9 +17,10 @@ def _get_embedder():
             root = Path(__file__).parent.parent.parent.parent.parent
             model_path = root / "models" / "bge-m3"
             if model_path.exists():
-                _embedder_cache = SentenceTransformer(str(model_path))
+                _embedder_cache = SentenceTransformer(str(model_path), device="cpu")
             else:
-                _embedder_cache = SentenceTransformer("BAAI/bge-m3")
+                _embedder_cache = SentenceTransformer("BAAI/bge-m3", device="cpu")
+            _embedder_cache.to("cpu")
         except Exception as e:
             logger.warning(f"Could not load SentenceTransformer ({e}). Using mock vectors.")
             _embedder_cache = False
