@@ -35,14 +35,50 @@ from typing import Any, Dict, List, Optional, Tuple
 # Project root & path setup
 # ---------------------------------------------------------------------------
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+LOG_DIR = PROJECT_ROOT / "logs"
+LOG_DIR.mkdir(parents=True, exist_ok=True)
 sys.path.insert(0, str(PROJECT_ROOT))
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s",
-    handlers=[logging.StreamHandler(), logging.FileHandler(PROJECT_ROOT / "logs" / "pipeline.log", mode="a")]
-)
+# Setup logging with dedicated error log file
 logger = logging.getLogger("sovereign_pipeline")
+logger.setLevel(logging.INFO)
+formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(message)s")
+
+stream_handler = logging.StreamHandler()
+stream_handler.setFormatter(formatter)
+
+file_handler = logging.FileHandler(LOG_DIR / "pipeline.log", mode="a", encoding="utf-8")
+file_handler.setFormatter(formatter)
+
+error_handler = logging.FileHandler(LOG_DIR / "pipeline_errors.log", mode="a", encoding="utf-8")
+error_handler.setLevel(logging.ERROR)
+error_handler.setFormatter(formatter)
+
+logger.addHandler(stream_handler)
+logger.addHandler(file_handler)
+logger.addHandler(error_handler)
+
+def log_error_with_traceback(context: str, exc: Exception):
+    """Log formatted error message and traceback to both console and error log file."""
+    msg = f"❌ ERROR in [{context}]: {type(exc).__name__}: {exc}"
+    logger.error(msg)
+    logger.error(traceback.format_exc())
+
+def retry_operation(operation_fn, max_retries: int = 3, delay: float = 3.0, description: str = "Operation") -> bool:
+    """Execute any operation/download with exponential retry backoff."""
+    for attempt in range(1, max_retries + 1):
+        try:
+            logger.info(f"🔄 {description} (Attempt {attempt}/{max_retries})...")
+            res = operation_fn()
+            if res is not False and res is not None:
+                logger.info(f"✅ {description} succeeded on attempt {attempt}.")
+                return True
+        except Exception as e:
+            log_error_with_traceback(f"{description} (Attempt {attempt})", e)
+            if attempt < max_retries:
+                time.sleep(delay * attempt)
+    logger.error(f"❌ {description} failed after {max_retries} attempts.")
+    return False
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -173,8 +209,8 @@ def resolve_model_path(local_name: str, hf_id: str) -> str:
     return hf_id
 
 def run_script(script_path: Path) -> bool:
-    """Run a Python script as a subprocess."""
-    logger.info(f"Running: {script_path.name}")
+    """Run a Python script as a subprocess with full error capture."""
+    logger.info(f"Executing: {script_path.name}")
     try:
         result = subprocess.run(
             [sys.executable, str(script_path)],
@@ -182,10 +218,15 @@ def run_script(script_path: Path) -> bool:
             capture_output=True, text=True, timeout=600
         )
         if result.returncode != 0:
-            logger.warning(f"{script_path.name} stderr: {result.stderr[:500]}")
-        return result.returncode == 0
+            logger.error(f"❌ {script_path.name} exited with code {result.returncode}")
+            err_msg = f"Script {script_path.name} stderr:\n{result.stderr}"
+            logger.error(err_msg[:1000])
+            with open(LOG_DIR / "pipeline_errors.log", "a", encoding="utf-8") as f:
+                f.write(f"\n[{datetime.now().isoformat()}] {err_msg}\n")
+            return False
+        return True
     except Exception as e:
-        logger.error(f"Failed to run {script_path.name}: {e}")
+        log_error_with_traceback(f"Executing {script_path.name}", e)
         return False
 
 

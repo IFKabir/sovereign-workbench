@@ -30,8 +30,8 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DATASET_DIR = PROJECT_ROOT / "training" / "yolo-pid" / "dataset"
 
 
-def download_with_roboflow_api(api_key: str, version: int = 1):
-    """Download dataset using the Roboflow Python SDK."""
+def download_with_roboflow_api(api_key: str, version: int = 1, max_retries: int = 3):
+    """Download dataset using the Roboflow Python SDK with automatic retry logic."""
     try:
         from roboflow import Roboflow
     except ImportError:
@@ -40,30 +40,35 @@ def download_with_roboflow_api(api_key: str, version: int = 1):
         subprocess.check_call([sys.executable, "-m", "pip", "install", "-q", "roboflow"])
         from roboflow import Roboflow
 
-    rf = Roboflow(api_key=api_key)
+    try:
+        rf = Roboflow(api_key=api_key)
+    except Exception as e:
+        print(f"❌ Could not initialize Roboflow API client: {e}")
+        return False
 
-    # Primary: PID Connect's P&ID Symbols dataset (1000+ images, 180+ classes)
-    # Fallback: P&ID Detection by PID (2700+ images, 20+ classes)
     datasets = [
         ("pid-connect", "p-id-symbols", version),
         ("pid", "p-id-detection-lxkix", 1),
     ]
 
     for workspace, project_name, ver in datasets:
-        try:
-            print(f"Trying dataset: {workspace}/{project_name} v{ver}")
-            project = rf.workspace(workspace).project(project_name)
-            dataset = project.version(ver).download(
-                "yolov8",
-                location=str(DATASET_DIR),
-                overwrite=True
-            )
-            print(f"✅ Downloaded: {workspace}/{project_name} v{ver}")
-            print(f"   Location: {DATASET_DIR}")
-            return True
-        except Exception as e:
-            print(f"   ⚠️  Failed: {e}")
-            continue
+        for attempt in range(1, max_retries + 1):
+            try:
+                print(f"Trying dataset: {workspace}/{project_name} v{ver} (Attempt {attempt}/{max_retries})")
+                project = rf.workspace(workspace).project(project_name)
+                dataset = project.version(ver).download(
+                    "yolov8",
+                    location=str(DATASET_DIR),
+                    overwrite=True
+                )
+                print(f"✅ Downloaded: {workspace}/{project_name} v{ver}")
+                print(f"   Location: {DATASET_DIR}")
+                return True
+            except Exception as e:
+                print(f"   ⚠️  Attempt {attempt} failed for {workspace}/{project_name}: {e}")
+                import time
+                time.sleep(3)
+                continue
 
     return False
 
@@ -182,8 +187,14 @@ def main():
         print("\n🎉 Dataset ready! You can now train YOLO:")
         print(f"   python scripts/run_full_pipeline.py --full")
     else:
-        print("\n❌ Dataset download failed. See instructions above.")
-        sys.exit(1)
+        print("\n⚠️ Network download failed or API key absent. Triggering local synthetic dataset generator...")
+        import subprocess
+        try:
+            subprocess.run([sys.executable, str(PROJECT_ROOT / "training/yolo-pid/convert_datasets.py")], check=True)
+            print("✅ Local dataset generated successfully.")
+        except Exception as e:
+            print(f"❌ Error generating fallback dataset: {e}")
+            sys.exit(1)
 
 
 if __name__ == "__main__":
