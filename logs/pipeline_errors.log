@@ -295,3 +295,27 @@ Traceback (most recent call last):
     ) from e
 ModuleNotFoundError: Could not import module 'AutoProcessor'. Are this object's requirements defined correctly?
 
+2026-09-29 18:04:00,048 [ERROR] ❌ Could not install peft
+2026-09-29 18:04:00,235 [ERROR] ❌ Could not install trl
+2026-09-29 18:04:00,419 [ERROR] ❌ Could not install bitsandbytes
+2026-09-29 18:04:03,336 [ERROR] Router training failed: Using the `Trainer` with `PyTorch` requires `accelerate>=1.1.0`: Please run `pip install transformers[torch]` or `pip install 'accelerate>=1.1.0'`
+Traceback (most recent call last):
+  File "/home/ifkabir/work/sih/sovereign-workbench/scripts/run_full_pipeline.py", line 675, in phase_4_train_router
+    training_args = TrainingArguments(
+                    ^^^^^^^^^^^^^^^^^^
+  File "<string>", line 115, in __init__
+  File "/home/ifkabir/.local/lib/python3.12/site-packages/transformers/training_args.py", line 1615, in __post_init__
+    self.device
+  File "/home/ifkabir/.local/lib/python3.12/site-packages/transformers/training_args.py", line 1914, in device
+    return self._setup_devices
+           ^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/functools.py", line 995, in __get__
+    val = self.func(instance)
+          ^^^^^^^^^^^^^^^^^^^
+  File "/home/ifkabir/.local/lib/python3.12/site-packages/transformers/training_args.py", line 1802, in _setup_devices
+    raise ImportError(
+ImportError: Using the `Trainer` with `PyTorch` requires `accelerate>=1.1.0`: Please run `pip install transformers[torch]` or `pip install 'accelerate>=1.1.0'`
+
+2026-09-29 18:37:40,831 [ERROR] ❌ Could not install peft
+2026-09-29 18:37:41,042 [ERROR] ❌ Could not install trl
+2026-09-29 18:37:41,249 [ERROR] ❌ Could not install bitsandbytes

@@ -53,3 +53,6 @@ build/
 # OS
 .DS_Store
 Thumbs.db
+*.onnx.data
+models/task-router/model.safetensors
+models/task-router/pytorch_model/model.safetensors
