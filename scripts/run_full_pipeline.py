@@ -1328,16 +1328,20 @@ Examples:
   python scripts/run_full_pipeline.py --dry-run         # Mock run (laptop, no GPU needed)
   python scripts/run_full_pipeline.py --benchmark-only  # Skip training, benchmark existing models
   python scripts/run_full_pipeline.py --skip-vlm-train  # Skip VLM training (most time-consuming)
+  python scripts/run_full_pipeline.py --vlm-only        # Train ONLY the VLM QLoRA (Track B)
+  python scripts/run_full_pipeline.py --router-only     # Train ONLY the ModernBERT Router (Track C)
         """
     )
     parser.add_argument("--full", action="store_true", help="Full training + benchmark on GPU")
     parser.add_argument("--dry-run", action="store_true", help="Mock run without GPU (generates sample output)")
     parser.add_argument("--benchmark-only", action="store_true", help="Skip training, benchmark existing weights")
     parser.add_argument("--skip-vlm-train", action="store_true", help="Skip VLM QLoRA training")
+    parser.add_argument("--vlm-only", action="store_true", help="Train ONLY the VLM QLoRA (Track B)")
+    parser.add_argument("--router-only", action="store_true", help="Train ONLY the ModernBERT Router (Track C)")
     args = parser.parse_args()
 
     # Default to --full if no mode specified
-    if not (args.full or args.dry_run or args.benchmark_only):
+    if not (args.full or args.dry_run or args.benchmark_only or args.vlm_only or args.router_only):
         args.full = True
 
     # Ensure logs directory exists
@@ -1351,7 +1355,8 @@ Examples:
     print("║   Sovereign AI Workbench — Training & Benchmarking Pipeline          ║")
     print("║   SIH26117 · MRPL · Smart Automation                                ║")
     print("║                                                                      ║")
-    print(f"║   Mode: {'DRY RUN (mock data)' if args.dry_run else 'FULL TRAINING + BENCHMARK' if args.full else 'BENCHMARK ONLY':<52}║")
+    mode_name = 'DRY RUN' if args.dry_run else 'VLM ONLY (Track B)' if args.vlm_only else 'ROUTER ONLY (Track C)' if args.router_only else 'FULL' if args.full else 'BENCHMARK ONLY'
+    print(f"║   Mode: {mode_name:<52}║")
     print(f"║   Started: {datetime.now().strftime('%Y-%m-%d %H:%M:%S'):<51}║")
     print("║                                                                      ║")
     print("╚══════════════════════════════════════════════════════════════════════╝")
@@ -1360,21 +1365,40 @@ Examples:
     # Phase 0: Environment
     env_info = phase_0_environment(args)
 
-    # Phase 1: Data preparation
-    phase_1_data_prep(args)
+    # --- Isolated track modes ---
+    if args.vlm_only:
+        logger.info("Running VLM-ONLY mode (Track B)")
+        phase_1_data_prep(args)  # Build VLM instruction dataset
+        train_yolo = {"training_time_sec": 0, "mAP50": 0.0, "mAP50_95": 0.0, "box_loss": 0.0, "test_inferences": [], "vram_peak_mb": 0.0}
+        train_vlm = phase_3_train_vlm(args)
+        train_router = {"training_time_sec": 0, "eval_accuracy": 0.0, "per_class_f1": {}, "test_queries": [], "vram_peak_mb": 0.0}
+        qwen_results, pipe_results = [], []
+        comparison = None
+    elif args.router_only:
+        logger.info("Running ROUTER-ONLY mode (Track C)")
+        phase_1_data_prep(args)  # Build router training data
+        train_yolo = {"training_time_sec": 0, "mAP50": 0.0, "mAP50_95": 0.0, "box_loss": 0.0, "test_inferences": [], "vram_peak_mb": 0.0}
+        train_vlm = {"training_time_sec": 0, "avg_train_loss": 0.0, "peak_vram_mb": 0.0, "tokens_per_sec": 0.0, "num_samples_trained": 0, "test_inferences": []}
+        train_router = phase_4_train_router(args)
+        qwen_results, pipe_results = [], []
+        comparison = None
+    else:
+        # --- Full / standard modes ---
+        # Phase 1: Data preparation
+        phase_1_data_prep(args)
 
-    # Phase 2-4: Training
-    train_yolo = phase_2_train_yolo(args)
-    train_vlm = phase_3_train_vlm(args)
-    train_router = phase_4_train_router(args)
+        # Phase 2-4: Training
+        train_yolo = phase_2_train_yolo(args)
+        train_vlm = phase_3_train_vlm(args)
+        train_router = phase_4_train_router(args)
 
-    # Phase 5-6: Benchmarking
-    qwen_results = phase_5_benchmark_qwen_only(args)
-    pipe_results = phase_6_benchmark_pipeline(args)
+        # Phase 5-6: Benchmarking
+        qwen_results = phase_5_benchmark_qwen_only(args)
+        pipe_results = phase_6_benchmark_pipeline(args)
 
-    # Phase 7: Report generation
-    comparison = phase_7_generate_report(args, env_info, train_yolo, train_vlm,
-                                          train_router, qwen_results, pipe_results)
+        # Phase 7: Report generation
+        comparison = phase_7_generate_report(args, env_info, train_yolo, train_vlm,
+                                              train_router, qwen_results, pipe_results)
 
     total_time = time.perf_counter() - start_time
 
