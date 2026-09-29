@@ -1,0 +1,63 @@
+{
+  "timestamp": "2026-09-29T10:18:35.095256",
+  "system_info": {
+    "timestamp": "2026-09-29T08:27:40.408126",
+    "gpu_name": "Tesla T4",
+    "vram_gb": 14.6,
+    "cuda_version": "13.0",
+    "driver_version": "N/A",
+    "python_version": "3.13.15",
+    "packages": {
+      "torch": "installed",
+      "transformers": "installed",
+      "ultralytics": "installed",
+      "datasets": "installed",
+      "accelerate": "installed",
+      "PIL": "installed",
+      "peft": "FAILED",
+      "trl": "installed",
+      "bitsandbytes": "installed"
+    },
+    "mode": "full"
+  },
+  "training": {
+    "yolo": {
+      "training_time_sec": 6627.1,
+      "mAP50": 0.6353,
+      "mAP50_95": 0.3655,
+      "box_loss": 0.0,
+      "test_inferences": [],
+      "vram_peak_mb": 5699.0
+    },
+    "vlm_qlora": {
+      "training_time_sec": 0,
+      "avg_train_loss": 0.0,
+      "peak_vram_mb": 0.0,
+      "tokens_per_sec": 0.0,
+      "num_samples_trained": 0,
+      "test_inferences": []
+    },
+    "router": {
+      "training_time_sec": 0,
+      "eval_accuracy": 0.0,
+      "per_class_f1": {},
+      "test_queries": [],
+      "vram_peak_mb": 0.0
+    }
+  },
+  "benchmark_qwen_only": [],
+  "benchmark_pipeline": [],
+  "comparison_summary": {
+    "avg_latency_qwen_ms": 0.0,
+    "avg_latency_pipeline_ms": 0.0,
+    "speedup_factor": 0.0,
+    "avg_vram_qwen_mb": 0.0,
+    "avg_vram_pipeline_mb": 0.0,
+    "routing_latency_qwen_ms": 0.0,
+    "routing_latency_pipeline_ms": 0.0,
+    "routing_speedup": 0.0,
+    "pid_detection_qwen_ms": 0.0,
+    "pid_detection_pipeline_yolo_ms": 0.0,
+    "pid_speedup": 0.0
+  }
+}
