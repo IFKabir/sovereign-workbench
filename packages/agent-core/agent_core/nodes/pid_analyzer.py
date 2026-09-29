@@ -18,23 +18,39 @@ def format_pid_inventory(detections: list, dimensions: dict = None) -> str:
         if not isinstance(d, dict):
             continue
         label = d.get("label", "unknown")
-        tag = d.get("tag", label.upper())
+        tag = d.get("tag", label.upper().replace("_", "-"))
         conf = d.get("confidence", 0.0)
-        box = d.get("bbox_normalized") or d.get("box", [])
 
         counts[label] = counts.get(label, 0) + 1
-        items_by_type.setdefault(label, []).append(f"{tag} (conf: {conf:.2f}, bbox: {box})")
+        items_by_type.setdefault(label, []).append((tag, conf))
 
+    # Build clean, readable summary
     summary_lines = [
         "### P&ID Schematic Symbol Extraction (YOLOv11s / ISA-5.1)",
-        f"Total Entities Detected: {len(detections)}",
-        "Component Breakdown: " + ", ".join(f"{count} {label}(s)" for label, count in counts.items()),
-        "\nDetailed Identified Components:"
+        "",
+        f"**Total Entities Detected:** {len(detections)}",
+        "",
+        "**Component Breakdown:**",
     ]
+    for label, count in counts.items():
+        display_name = label.replace("_", " ").title()
+        summary_lines.append(f"- {display_name}: **{count}** detected")
+
+    summary_lines.append("")
+    summary_lines.append("**Identified Components:**")
+    summary_lines.append("")
+    summary_lines.append("| # | Component Type | Tag | Confidence |")
+    summary_lines.append("|---|---------------|-----|------------|")
+    idx = 1
     for label, items in items_by_type.items():
-        summary_lines.append(f"- **{label.replace('_', ' ').title()}**: " + ", ".join(items))
+        display_name = label.replace("_", " ").title()
+        for tag, conf in items:
+            conf_pct = f"{conf * 100:.0f}%"
+            summary_lines.append(f"| {idx} | {display_name} | `{tag}` | {conf_pct} |")
+            idx += 1
 
     return "\n".join(summary_lines)
+
 
 
 async def analyze_pid(state: WorkbenchState) -> dict:
