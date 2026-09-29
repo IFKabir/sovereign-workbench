@@ -82,9 +82,9 @@ def _generate_engineering_fallback(query: str) -> str:
         vel_match = re.search(r'(\d+(?:\.\d+)?)\s*m/s\b', q)
         velocity = float(vel_match.group(1)) if vel_match else 2.0
 
-        # Extract Diameter: check inches first (e.g. 6-inch, 6 inch, 6 in, 6"), then meters
+        # Extract Diameter: check inches first (e.g. 6-inch, 6 inch, 6 in, 6"), then explicit meter diameter
         inch_match = re.search(r'(\d+(?:\.\d+)?)\s*(?:-|\s*)(?:inch|in\b|\")', q)
-        m_match = re.search(r'(?:diameter|diam|pipe)?\s*(?:of|=)?\s*(\d+(?:\.\d+)?)\s*m\b', q)
+        m_match = re.search(r'(?:diameter|diam|pipe|size)\s*(?:of|=)?\s*(\d+(?:\.\d+)?)\s*m\b', q)
         if inch_match:
             diameter = round(float(inch_match.group(1)) * 0.0254, 4)
         elif m_match:
