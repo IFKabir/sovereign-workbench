@@ -85,38 +85,8 @@ async def analyze_pid(state: WorkbenchState) -> dict:
         except Exception as exc:
             logger.warning(f"YOLO microservice call failed for {image_path}: {exc}")
 
-    # Grounded default preset detections if still empty
     if not detections:
-        detections = [
-            {
-                "class_id": 0,
-                "label": "control_valve",
-                "tag": "CV-101",
-                "confidence": 0.98,
-                "bbox_normalized": {"x_center": 0.48, "y_center": 0.28, "width": 0.08, "height": 0.12}
-            },
-            {
-                "class_id": 2,
-                "label": "pressure_transmitter",
-                "tag": "PT-101",
-                "confidence": 0.95,
-                "bbox_normalized": {"x_center": 0.19, "y_center": 0.65, "width": 0.06, "height": 0.10}
-            },
-            {
-                "class_id": 0,
-                "label": "gate_valve",
-                "tag": "HV-101A",
-                "confidence": 0.97,
-                "bbox_normalized": {"x_center": 0.30, "y_center": 0.42, "width": 0.06, "height": 0.08}
-            },
-            {
-                "class_id": 2,
-                "label": "temperature_sensor",
-                "tag": "TT-102",
-                "confidence": 0.94,
-                "bbox_normalized": {"x_center": 0.81, "y_center": 0.65, "width": 0.06, "height": 0.10}
-            }
-        ]
+        detections = []
 
     summary = format_pid_inventory(detections, image_dims)
 

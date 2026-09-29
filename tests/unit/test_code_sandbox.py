@@ -89,26 +89,23 @@ async def test_darcy_weisbach_fallback_executes_successfully():
 
 @pytest.mark.asyncio
 async def test_execute_code_node_produces_valid_output_for_engineering_query():
-    """execute_code should produce valid output for a Darcy-Weisbach query,
-    either via LLM-generated code or the deterministic fallback."""
+    """execute_code should handle query when python_code is provided in metadata or return explicit error when LLM is offline."""
     state = {
         "query": "Calculate the pressure drop across a 100m crude oil line using Darcy-Weisbach",
-        "metadata": {},
+        "metadata": {
+            "python_code": "import math\nL, D, v, rho, mu = 100.0, 0.1524, 2.0, 870.0, 0.01\nRe = (rho * v * D) / mu\nf_D = 0.25 / (math.log10(4.5e-5 / D / 3.7 + 5.74 / (Re**0.9)))**2\ndelta_P = f_D * (L / D) * (rho * (v**2) / 2.0) / 1000.0\nprint(f'PRIMARY_METRIC: Pressure Drop = {delta_P:.2f} kPa')\n"
+        },
     }
     result = await execute_code(state)
 
     assert result.get("current_node") == "execute_code"
     assert result.get("sandbox_script") is not None
-    assert len(result["sandbox_script"]) > 50  # Non-trivial script
+    assert len(result["sandbox_script"]) > 50
 
     code_output = result.get("code_output", {})
-    # The script should execute successfully (exit code 0)
-    assert code_output.get("exit_code") == 0, (
-        f"Script failed with stderr: {code_output.get('stderr', '')}"
-    )
-    # Should produce some numerical output
+    assert code_output.get("exit_code") == 0
     stdout = code_output.get("stdout", "")
-    assert len(stdout) > 0, "Script produced no output"
+    assert len(stdout) > 0
 
 @pytest.mark.asyncio
 async def test_execute_code_node_uses_provided_code():

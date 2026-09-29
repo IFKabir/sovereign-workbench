@@ -277,21 +277,9 @@ async def generate_response(state: WorkbenchState) -> dict:
                     "current_node": "generate_response",
                 }
         except Exception as exc:
-            logger.warning(f"vLLM endpoint unavailable on port 8002 ({exc}), using fallback schematic summary.")
-            fallback = (
-                "### P&ID Schematic Analysis Report\n\n"
-                f"{schematic_context}\n\n"
-                "---\n\n"
-                f"**Engineering Assessment for:** *\"{user_query}\"*\n\n"
-                "Based on the detected symbols above, the schematic shows standard refinery instrumentation "
-                "with control valves, isolation valves, and process measurement instruments. "
-                "Review the component inventory for compliance with ISA-5.1 tagging conventions "
-                "and OISD-118 isolation requirements.\n\n"
-                "> *Analysis grounded on YOLOv11s symbol detection (mAP@50: 0.635). "
-                "Local VLM reasoning engine in fallback mode.*"
-            )
+            logger.warning(f"vLLM endpoint unavailable on port 8002 ({exc}), returning direct schematic extraction.")
             return {
-                "final_response": fallback,
+                "final_response": schematic_context,
                 "pid_summary": schematic_context,
                 "error": None,
                 "current_node": "generate_response",
@@ -377,24 +365,9 @@ async def generate_response(state: WorkbenchState) -> dict:
             }
 
     except Exception as exc:
-        logger.warning(f"vLLM endpoint unavailable on port 8002 ({exc}), using fallback compliance summary.")
-        query_str = state.get("query", "")
-        if context_parts:
-            fallback = (
-                "### Operational Compliance Summary\n\n"
-                f"**Query Evaluation**: {query_str}\n\n"
-                "#### Grounded Standards Context:\n"
-                f"{formatted_context_chunks}\n\n"
-                "*(Grounded on local technical standards fixtures. Local reasoning engine in fallback mode.)*"
-            )
-        else:
-            fallback = (
-                "### Operational Compliance Summary\n\n"
-                f"**Query Evaluation**: {query_str}\n\n"
-                "*(Grounded on local technical standards fixtures. Local reasoning engine in fallback mode.)*"
-            )
+        logger.warning(f"vLLM endpoint unavailable on port 8002 ({exc}), returning direct context execution output.")
         return {
-            "final_response": fallback,
+            "final_response": formatted_context_chunks,
             "error": None,
             "current_node": "generate_response",
         }

@@ -449,19 +449,24 @@ async def execute_code(state: WorkbenchState) -> dict:
                 code = None
 
     if not code:
-        code = _generate_engineering_fallback(query)
-        logger.info("Using deterministic engineering fallback script")
+        code_output = {
+            "stdout": "",
+            "stderr": "LLM Code Generation failed. Ensure vLLM model service is active on port 8002.",
+            "exit_code": 1,
+            "execution_time_ms": 0,
+            "sandbox_mode": "error",
+            "metrics": [],
+        }
+        return {
+            "code_output": code_output,
+            "calculated_metrics": [],
+            "sandbox_script": "",
+            "sandbox_stdout": "",
+            "current_node": "execute_code"
+        }
 
     sandbox = SecureSandbox()
     result = await sandbox.execute(code)
-
-    if result.get("exit_code") != 0 and not state.get("metadata", {}).get("python_code"):
-        logger.warning(
-            f"LLM generated script execution failed (exit code {result.get('exit_code')}), "
-            f"retrying with deterministic engineering fallback script."
-        )
-        code = _generate_engineering_fallback(query)
-        result = await sandbox.execute(code)
 
     stdout = result.get("stdout", "")
     stderr = result.get("stderr", "")
