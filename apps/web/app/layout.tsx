@@ -22,7 +22,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="dark">
+    <html lang="en" className="dark" suppressHydrationWarning>
       <head>
         <link rel="icon" href="/mrpl_logo.jpg" type="image/jpeg" sizes="any" />
         <link rel="shortcut icon" href="/mrpl_logo.jpg" type="image/jpeg" />

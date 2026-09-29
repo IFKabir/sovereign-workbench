@@ -81,9 +81,10 @@ async def detect(file: UploadFile = File(None), image_path: str = Form(None)):
 
     width, height = image.size
 
-    # Run inference with higher confidence threshold + NMS IoU filtering
-    results = model(image, imgsz=1024, conf=0.40, iou=0.45)
+    # Run inference with tuned confidence threshold + NMS IoU filtering for P&ID diagrams
+    results = model(image, imgsz=1280, conf=0.20, iou=0.45)
     
+    tag_counters = {}
     detections = []
     for r in results:
         for box in r.boxes:
@@ -91,6 +92,29 @@ async def detect(file: UploadFile = File(None), image_path: str = Form(None)):
             label_name = model.names.get(cls_id, str(cls_id))
             conf = float(box.conf[0])
             xyxy = [float(coord) for coord in box.xyxy[0]]
+
+            # Generate standard ISA tag prefix based on class name
+            prefix = "EQ"
+            l_lower = label_name.lower()
+            if "valve" in l_lower:
+                prefix = "CV" if "control" in l_lower or "pneumatic" in l_lower else "HV"
+            elif "pump" in l_lower:
+                prefix = "P"
+            elif "compressor" in l_lower:
+                prefix = "K"
+            elif "transmitter" in l_lower or "trasmitter" in l_lower:
+                prefix = "PT" if "pressure" in l_lower else ("TT" if "temp" in l_lower else "LT")
+            elif "indicator" in l_lower or "gauge" in l_lower:
+                prefix = "PI" if "pressure" in l_lower else "TI"
+            elif "vessel" in l_lower or "tank" in l_lower or "drum" in l_lower:
+                prefix = "V"
+            elif "exchanger" in l_lower:
+                prefix = "E"
+            elif "orifice" in l_lower or "flowmeter" in l_lower:
+                prefix = "FT"
+
+            tag_counters[prefix] = tag_counters.get(prefix, 100) + 1
+            generated_tag = f"{prefix}-{tag_counters[prefix]}"
 
             bbox_norm = {
                 "x_center": round(((xyxy[0] + xyxy[2]) / 2.0) / width, 4),
@@ -102,6 +126,7 @@ async def detect(file: UploadFile = File(None), image_path: str = Form(None)):
             detections.append({
                 "class_id": cls_id,
                 "label": label_name,
+                "tag": generated_tag,
                 "confidence": round(conf, 3),
                 "box": [round(c, 2) for c in xyxy],
                 "normalized_box": [
@@ -116,8 +141,8 @@ async def detect(file: UploadFile = File(None), image_path: str = Form(None)):
     # Secondary Python-level NMS to remove remaining overlaps
     detections = _nms_filter(detections, iou_threshold=0.5)
 
-    # Cap at 25 max detections, sorted by confidence
-    detections = detections[:25]
+    # Cap at 50 max detections, sorted by confidence
+    detections = detections[:50]
 
     elapsed_ms = (time.time() - start_time) * 1000
 

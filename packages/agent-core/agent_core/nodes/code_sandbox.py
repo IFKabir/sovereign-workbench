@@ -78,17 +78,38 @@ def _generate_engineering_fallback(query: str) -> str:
         # Check if pressure drop is ALSO requested in a multi-metric query
         is_multi_metric = any(kw in q for kw in ["pressure drop", "delta_p", "friction factor"])
 
+        # Extract Velocity [m/s]
         vel_match = re.search(r'(\d+(?:\.\d+)?)\s*m/s\b', q)
-        velocity = float(vel_match.group(1)) if vel_match else 2.5
+        velocity = float(vel_match.group(1)) if vel_match else 2.0
 
-        diam_match = re.search(r'(?:diameter|diam)\s*(?:of|=)?\s*(\d+(?:\.\d+)?)\s*m\b', q)
-        diameter = float(diam_match.group(1)) if diam_match else 0.1
+        # Extract Diameter: check inches first (e.g. 6-inch, 6 inch, 6 in, 6"), then meters
+        inch_match = re.search(r'(\d+(?:\.\d+)?)\s*(?:-|\s*)(?:inch|in\b|\")', q)
+        m_match = re.search(r'(?:diameter|diam|pipe)?\s*(?:of|=)?\s*(\d+(?:\.\d+)?)\s*m\b', q)
+        if inch_match:
+            diameter = round(float(inch_match.group(1)) * 0.0254, 4)
+        elif m_match:
+            diameter = float(m_match.group(1))
+        else:
+            diameter = 0.1524  # Standard 6-inch pipe fallback
 
-        rho_match = re.search(r'(\d+(?:\.\d+)?)\s*kg/m', q)
-        density = float(rho_match.group(1)) if rho_match else 1000.0
+        # Extract Density [kg/m³]: check explicit kg/m³, or infer from fluid type
+        rho_match = re.search(r'(\d+(?:\.\d+)?)\s*(?:kg/m³|kg/m3|kg/m\^3|kg/m)', q)
+        if rho_match:
+            density = float(rho_match.group(1))
+        elif "crude" in q or "oil" in q:
+            density = 870.0  # Standard crude oil density
+        else:
+            density = 1000.0 # Standard water density
 
-        mu_match = re.search(r'(\d+(?:\.\d+)?)\s*Pa·?s', q)
-        viscosity = float(mu_match.group(1)) if mu_match else 0.001
+        # Extract Viscosity [Pa·s]: check Pa·s, Pa.s, cP
+        mu_match = re.search(r'(\d+(?:\.\d+)?)\s*(?:pa[·\.\*]?\s*s|pascal|cp\b)', q)
+        if mu_match:
+            val = float(mu_match.group(1))
+            viscosity = val / 1000.0 if "cp" in mu_match.group(0) else val
+        elif "crude" in q or "oil" in q:
+            viscosity = 0.01  # Standard crude viscosity
+        else:
+            viscosity = 0.001
 
         if is_multi_metric:
             length_match = re.search(r'(\d+(?:\.\d+)?)\s*m(?:eter)?(?:s)?\s+(?:pipe|line|length)\b', q)
@@ -115,7 +136,7 @@ else:
 delta_P = f_D * (L / D) * (rho * (v**2) / 2.0)
 delta_P_kPa = delta_P / 1000.0
 
-print(f"PRIMARY_METRIC: Reynolds Number (Re) = {{Re:,.0f}} ({{flow_regime}})")
+print(f"PRIMARY_METRIC: Reynolds Number (Re) = {{Re:,.1f}} ({{flow_regime}})")
 print(f"PRIMARY_METRIC: Darcy Friction Factor (f_D) = {{f_D:.6f}}")
 print(f"PRIMARY_METRIC: Pressure Drop (delta_P) = {{delta_P_kPa:,.2f}} kPa")
 '''
@@ -132,7 +153,7 @@ mu = {viscosity}      # Dynamic viscosity [Pa·s]
 Re = (rho * v * D) / mu
 flow_regime = "Laminar" if Re < 2300 else ("Transitional" if Re <= 4000 else "Fully Turbulent")
 
-print(f"PRIMARY_METRIC: Reynolds Number (Re) = {{Re:,.0f}} ({{flow_regime}})")
+print(f"PRIMARY_METRIC: Reynolds Number (Re) = {{Re:,.1f}} ({{flow_regime}})")
 '''
 
     # Case 2: API Gravity & Density (Multi-Metric Response)
