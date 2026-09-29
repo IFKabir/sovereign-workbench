@@ -307,7 +307,8 @@ async def _generate_code_via_llm(query: str) -> str | None:
             return None
 
     except Exception as exc:
-        logger.warning(f"LLM code generation failed ({exc}) - vLLM endpoint offline")
+        err_detail = str(exc) or repr(exc)
+        logger.warning(f"LLM code generation failed ({err_detail}) - vLLM endpoint offline")
         return None
 
 
